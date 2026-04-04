@@ -43,6 +43,14 @@ export default function ChatPage() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const scrollRef = useRef<HTMLDivElement>(null);
 
+  // Only show Luna's messages + the single latest message from the current user
+  const displayedMessages = (() => {
+    const lastUserMsg = [...messages].reverse().find((m) => m.senderId === session?.userId);
+    return messages.filter(
+      (m) => m.senderId !== session?.userId || m === lastUserMsg
+    );
+  })();
+
   useEffect(() => {
     if (!authLoading && !session?.authenticated) {
       router.replace("/login");
@@ -254,11 +262,11 @@ export default function ChatPage() {
                 </p>
               ) : (
                 <div className="space-y-4">
-                  {messages.map((msg, i) => {
+                  {displayedMessages.map((msg, i) => {
                     const isMe = msg.senderId === session?.userId;
                     const showAvatar =
                       !isMe &&
-                      (i === 0 || messages[i - 1].senderId !== msg.senderId);
+                      (i === 0 || displayedMessages[i - 1].senderId !== msg.senderId);
                     return (
                       <div
                         key={`${msg.sentAt}-${i}`}
@@ -317,21 +325,21 @@ export default function ChatPage() {
             {/* Input */}
             <div className="border-t border-indigo-300/15 bg-slate-900/50 p-4 backdrop-blur">
               <form className="flex gap-2" onSubmit={handleSend}>
-                <Input
-                  className="flex-1 border-indigo-300/20 bg-slate-950 placeholder:text-slate-500 focus-visible:ring-indigo-400/40"
-                  value={message}
-                  onChange={(e) => setMessage(e.target.value)}
-                  placeholder={`Message ${activeConv.participant.displayName}…`}
-                  disabled={sending}
-                />
-                <Button
-                  type="submit"
-                  disabled={sending || !message.trim()}
-                  className="bg-gradient-to-r from-blue-500 to-purple-500 text-white hover:from-blue-600 hover:to-purple-600"
-                >
-                  <Send className="h-4 w-4" />
-                </Button>
-              </form>
+                  <Input
+                    className="flex-1 border-indigo-300/20 bg-slate-950 placeholder:text-slate-500 focus-visible:ring-indigo-400/40"
+                    value={message}
+                    onChange={(e) => setMessage(e.target.value)}
+                    placeholder="Send a link to Luna…"
+                    disabled={sending}
+                  />
+                  <Button
+                    type="submit"
+                    disabled={sending || !message.trim()}
+                    className="bg-gradient-to-r from-blue-500 to-purple-500 text-white hover:from-blue-600 hover:to-purple-600"
+                  >
+                    <Send className="h-4 w-4" />
+                  </Button>
+                </form>
             </div>
           </>
         ) : (

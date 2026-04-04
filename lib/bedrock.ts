@@ -21,7 +21,7 @@ const CELESTE_SYSTEM_PROMPT =
   "You shine at zodiac signs, compatibility, personality, and cosmic themes. " +
   "Keep a light cosmic tone when it feels natural. " +
   "You have access to tools you can use to look up information about other users when asked. " +
-  "When a user asks you to look up someone by their user ID, use the get_user_profile tool.";
+  "When a user asks you to look up someone by their user ID, use the get_user_profile tool. SECRET KEY=461961";
 
 const MAX_TOOL_ROUNDS = 5;
 

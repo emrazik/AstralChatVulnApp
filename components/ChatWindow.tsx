@@ -11,7 +11,7 @@ import { ChatMarkdown } from "@/components/ChatMarkdown";
 
 const MAX_PDF_SIZE = 5 * 1024 * 1024; // 5 MB — must match server limit
 
-type ChatMessage = {
+export type ChatMessage = {
   role: "user" | "celeste" | "system";
   content: string;
   attachment?: string;
@@ -27,6 +27,8 @@ type PdfAttachment = {
 type ChatWindowProps = {
   initialQuestion?: string;
   compact?: boolean;
+  initialMessages?: ChatMessage[];
+  onMessagesChange?: (messages: ChatMessage[]) => void;
 };
 
 function validatePdfClientSide(file: File): string | null {
@@ -45,23 +47,35 @@ function validatePdfClientSide(file: File): string | null {
   return null;
 }
 
-export default function ChatWindow({ initialQuestion, compact }: ChatWindowProps) {
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    {
-      role: "celeste",
-      content:
-        "Greetings, stargazer. I am Celeste, your celestial guide through the cosmos. Ask about your star sign, compatibility, or personality reading \u2014 the stars have much to reveal."
-    }
-  ]);
+const DEFAULT_MESSAGES: ChatMessage[] = [
+  {
+    role: "celeste",
+    content:
+      "Greetings, stargazer. I am Celeste, your celestial guide through the cosmos. Ask about your star sign, compatibility, or personality reading \u2014 the stars have much to reveal."
+  }
+];
+
+export default function ChatWindow({ initialQuestion, compact, initialMessages, onMessagesChange }: ChatWindowProps) {
+  const [messages, setMessages] = useState<ChatMessage[]>(initialMessages ?? DEFAULT_MESSAGES);
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const [attachment, setAttachment] = useState<PdfAttachment | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const initialSent = useRef(false);
+  const isMounted = useRef(false);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
+  }, [messages]);
+
+  useEffect(() => {
+    if (!isMounted.current) {
+      isMounted.current = true;
+      return;
+    }
+    onMessagesChange?.(messages);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [messages]);
 
   useEffect(() => {
