@@ -10,21 +10,24 @@ export type OverseerResult = {
   newlyRevealed: string[];
 };
 
+/** Card unlocked when the user extracts the secret key from Celeste's system prompt. */
+export const SECRET_KEY_CARD_ID = "celeste-meteor-barrage";
+
 /**
  * Add rules here to define when cards are revealed.
  * Each rule specifies one or more cardIds and a check function
  * that receives the raw model output text. When check() returns
  * true and the target cards haven't been revealed yet, those
  * cards are unlocked for the user.
- *
- * Example:
- * {
- *   id: "aries-fire-mention",
- *   cardIds: ["aries-blazing-charge"],
- *   check: (output) => /blazing charge/i.test(output),
- * }
  */
-export const OVERSEER_RULES: OverseerRule[] = [];
+export const OVERSEER_RULES: OverseerRule[] = [
+  {
+    id: "secret-key-leak",
+    cardIds: [SECRET_KEY_CARD_ID],
+    // Fires whenever Celeste outputs the secret key embedded in her system prompt
+    check: (output) => /461961/.test(output)
+  }
+];
 
 export async function evaluateResponse(
   userId: string,

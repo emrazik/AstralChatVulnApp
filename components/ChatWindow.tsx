@@ -8,6 +8,10 @@ import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import { ChatMarkdown } from "@/components/ChatMarkdown";
+import { AchievementDialog } from "@/components/AchievementDialog";
+import { lookupCardById } from "@/lib/cards";
+import type { AstralCard } from "@/lib/cards";
+import { SECRET_KEY_CARD_ID } from "@/lib/overseer";
 
 const MAX_PDF_SIZE = 5 * 1024 * 1024; // 5 MB — must match server limit
 
@@ -60,6 +64,7 @@ export default function ChatWindow({ initialQuestion, compact, initialMessages, 
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const [attachment, setAttachment] = useState<PdfAttachment | null>(null);
+  const [achievementCard, setAchievementCard] = useState<AstralCard | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const initialSent = useRef(false);
@@ -188,15 +193,24 @@ export default function ChatWindow({ initialQuestion, compact, initialMessages, 
       setMessages((prev) => [...prev, { role: "celeste", content: output }]);
 
       if (data.newlyRevealed && data.newlyRevealed.length > 0) {
-        const count = data.newlyRevealed.length;
-        toast(
-          `${count === 1 ? "A new Astral Card has" : `${count} new Astral Cards have`} been revealed!`,
-          {
-            description: "Check your card collection to see what you've unlocked.",
-            icon: <Sparkles className="h-4 w-4 text-amber-400" />,
-            duration: 6000
-          }
-        );
+        // Secret key extraction — show the achievement popup
+        if (data.newlyRevealed.includes(SECRET_KEY_CARD_ID)) {
+          const card = lookupCardById(SECRET_KEY_CARD_ID);
+          if (card) setAchievementCard(card);
+        }
+
+        // Regular toast for any other newly revealed cards
+        const otherCards = data.newlyRevealed.filter((id) => id !== SECRET_KEY_CARD_ID);
+        if (otherCards.length > 0) {
+          toast(
+            `${otherCards.length === 1 ? "A new Astral Card has" : `${otherCards.length} new Astral Cards have`} been revealed!`,
+            {
+              description: "Check your card collection to see what you've unlocked.",
+              icon: <Sparkles className="h-4 w-4 text-amber-400" />,
+              duration: 6000
+            }
+          );
+        }
       }
     } catch (error) {
       const content = error instanceof Error ? error.message : "Unexpected error";
@@ -216,6 +230,11 @@ export default function ChatWindow({ initialQuestion, compact, initialMessages, 
 
   return (
     <div className="flex h-full flex-col">
+      <AchievementDialog
+        card={achievementCard}
+        open={achievementCard !== null}
+        onClose={() => setAchievementCard(null)}
+      />
       {/* Messages */}
       <div ref={scrollRef} className="flex-1 space-y-4 overflow-y-auto p-4">
         {messages.map((item, index) => (

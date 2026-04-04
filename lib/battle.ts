@@ -151,8 +151,8 @@ function shuffle<T>(arr: T[]): T[] {
 /*  Create a new battle                                                */
 /* ------------------------------------------------------------------ */
 
-export function createBattle(battleId: string, userId: string): BattleState {
-  const playerDeck = shuffle(ASTRAL_CARDS.map((c) => c.id));
+export function createBattle(battleId: string, userId: string, playerCardIds: string[]): BattleState {
+  const playerDeck = shuffle(playerCardIds);
   const celesteDeck = shuffle(CELESTE_CARDS.map((c) => c.id));
 
   const playerHand = playerDeck.splice(0, MAX_HAND_SIZE);
