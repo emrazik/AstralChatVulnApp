@@ -18,6 +18,7 @@ export async function GET() {
   const profile = await getProfile(userId);
 
   return NextResponse.json({
+    hexId: profile?.hexId ?? null,
     email,
     displayName: profile?.displayName ?? "",
     birthday: profile?.birthday ?? "",

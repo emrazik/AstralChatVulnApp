@@ -1,14 +1,17 @@
+import { randomBytes } from "crypto";
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import {
   DynamoDBDocumentClient,
   GetCommand,
   PutCommand,
+  ScanCommand,
   UpdateCommand
 } from "@aws-sdk/lib-dynamodb";
 import { readEnv } from "@/lib/env";
 
 export type UserProfile = {
   userId: string;
+  hexId?: string;
   displayName?: string;
   birthday?: string;
   bio?: string;
@@ -18,6 +21,10 @@ export type UserProfile = {
   revealedCards?: string[];
   updatedAt?: string;
 };
+
+function generateHexId(): string {
+  return "U" + randomBytes(3).toString("hex").toUpperCase();
+}
 
 let docClient: DynamoDBDocumentClient | null = null;
 
@@ -44,7 +51,7 @@ export async function getProfile(userId: string): Promise<UserProfile | null> {
 
 export async function upsertProfile(
   userId: string,
-  data: Partial<Omit<UserProfile, "userId">>
+  data: Partial<Omit<UserProfile, "userId" | "hexId">>
 ) {
   const env = readEnv();
   const existing = (await getProfile(userId)) ?? { userId };
@@ -52,6 +59,7 @@ export async function upsertProfile(
     ...existing,
     ...data,
     userId,
+    hexId: existing.hexId ?? generateHexId(),
     updatedAt: new Date().toISOString()
   };
   await getDocClient().send(
@@ -61,6 +69,18 @@ export async function upsertProfile(
     })
   );
   return next;
+}
+
+export async function getProfileByHexId(hexId: string): Promise<UserProfile | null> {
+  const env = readEnv();
+  const result = await getDocClient().send(
+    new ScanCommand({
+      TableName: env.profileTableName,
+      FilterExpression: "hexId = :hexId",
+      ExpressionAttributeValues: { ":hexId": hexId }
+    })
+  );
+  return (result.Items?.[0] as UserProfile) ?? null;
 }
 
 export async function getRevealedCards(userId: string): Promise<string[]> {

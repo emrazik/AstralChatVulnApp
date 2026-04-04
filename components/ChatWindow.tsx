@@ -53,7 +53,6 @@ export default function ChatWindow({ initialQuestion }: ChatWindowProps) {
     }
   ]);
   const [message, setMessage] = useState("");
-  const [sessionId, setSessionId] = useState<string | undefined>();
   const [loading, setLoading] = useState(false);
   const [attachment, setAttachment] = useState<PdfAttachment | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -139,18 +138,24 @@ export default function ChatWindow({ initialQuestion }: ChatWindowProps) {
     ]);
 
     try {
+      const history = messages
+        .filter((m) => m.role !== "system")
+        .map((m) => ({
+          role: m.role === "celeste" ? "assistant" : "user",
+          content: m.content
+        }));
+
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           message: userMessage,
-          sessionId,
+          history,
           ...(pdfContext ? { pdfContext } : {})
         })
       });
       const data = (await res.json()) as {
         output?: string;
-        sessionId?: string;
         message?: string;
         guardrailAction?: string;
         newlyRevealed?: string[];
@@ -158,10 +163,6 @@ export default function ChatWindow({ initialQuestion }: ChatWindowProps) {
 
       if (!res.ok) {
         throw new Error(data.message ?? "Chat request failed.");
-      }
-
-      if (data.sessionId) {
-        setSessionId(data.sessionId);
       }
 
       const output =

@@ -387,7 +387,8 @@ resource "aws_iam_role_policy" "amplify_bedrock_policy" {
         Action = [
           "dynamodb:GetItem",
           "dynamodb:PutItem",
-          "dynamodb:UpdateItem"
+          "dynamodb:UpdateItem",
+          "dynamodb:Scan"
         ],
         Resource = [
           aws_dynamodb_table.profiles.arn,
@@ -415,7 +416,7 @@ resource "aws_amplify_app" "app" {
     BEDROCK_GUARDRAIL_VERSION = "1"
     COGNITO_USER_POOL_ID      = aws_cognito_user_pool.users.id
     COGNITO_CLIENT_ID         = aws_cognito_user_pool_client.web_client.id
-    BEDROCK_MAX_TOKENS        = "700"
+    BEDROCK_MAX_TOKENS        = "500"
     DYNAMODB_PROFILE_TABLE    = aws_dynamodb_table.profiles.name
     DYNAMODB_BATTLES_TABLE    = aws_dynamodb_table.battles.name
   }

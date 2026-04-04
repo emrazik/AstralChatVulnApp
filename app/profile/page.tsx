@@ -12,6 +12,7 @@ import { ZodiacBadge } from "@/components/ZodiacBadge";
 import { cn } from "@/lib/utils";
 
 type ProfileData = {
+  hexId: string | null;
   email: string | null;
   displayName: string;
   birthday: string;
@@ -184,9 +185,19 @@ export default function ProfilePage() {
 
         <section className="rounded-xl border border-indigo-400/20 bg-slate-900/50 p-6 backdrop-blur">
           <h2 className="mb-4 text-lg font-medium text-astral-text">Account</h2>
-          <div className="space-y-1 text-sm">
-            <p className="text-astral-textMuted">Email</p>
-            <p className="font-medium text-astral-text">{profile.email ?? "—"}</p>
+          <div className="space-y-3 text-sm">
+            {profile.hexId && (
+              <div className="space-y-1">
+                <p className="text-astral-textMuted">User ID</p>
+                <p className="font-mono font-medium tracking-wider text-astral-indigo">
+                  {profile.hexId}
+                </p>
+              </div>
+            )}
+            <div className="space-y-1">
+              <p className="text-astral-textMuted">Email</p>
+              <p className="font-medium text-astral-text">{profile.email ?? "—"}</p>
+            </div>
             {profile.zodiacSign && (
               <p className="pt-2 text-xs text-astral-textMuted">
                 Saved sign:{" "}

@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
-import { chatWithKnowledgeBase } from "@/lib/bedrock";
+import { chatWithTools } from "@/lib/bedrock";
 import { getAuthenticatedUserId } from "@/lib/auth";
 import { isRateLimited } from "@/lib/rate-limit";
 import { evaluateResponse } from "@/lib/overseer";
 
 type ChatBody = {
   message?: string;
-  sessionId?: string;
+  history?: { role: string; content: string }[];
   pdfContext?: string;
 };
 
@@ -29,9 +29,9 @@ export async function POST(request: Request) {
   }
 
   try {
-    const output = await chatWithKnowledgeBase({
+    const output = await chatWithTools({
       message: body.message.trim(),
-      sessionId: body.sessionId,
+      history: body.history,
       pdfContext: body.pdfContext
     });
 
