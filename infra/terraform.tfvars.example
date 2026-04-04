@@ -1,0 +1,14 @@
+aws_region                = "us-east-1"
+project_name              = "astralchat"
+
+# Amplify + GitHub (optional). 401 = bad/expired token or wrong repo URL.
+# Use a classic PAT (repo scope) or fine-grained PAT on this repo.
+enable_amplify_hosting    = false
+github_repository_url     = "https://github.com/your-org/astralchat"
+github_access_token       = "ghp_xxx"
+# Use a foundation-model ARN for Haiku (on-demand). For Sonnet 4.5+ use an inference profile ARN, e.g.:
+# arn:aws:bedrock:us-east-1:YOUR_ACCOUNT_ID:inference-profile/us.anthropic.claude-sonnet-4-5-20250929-v1:0
+bedrock_generation_model_arn = "arn:aws:bedrock:us-east-1::foundation-model/anthropic.claude-3-haiku-20240307-v1:0"
+bedrock_embedding_model_arn  = "arn:aws:bedrock:us-east-1::foundation-model/amazon.titan-embed-text-v2:0"
+# Must match the embedding model output size (1024 matches Titan v2 default)
+bedrock_embedding_dimensions = 1024
