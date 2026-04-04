@@ -324,6 +324,23 @@ resource "aws_dynamodb_table" "profiles" {
   }
 }
 
+resource "aws_dynamodb_table" "messages" {
+  name         = "${var.project_name}-messages"
+  billing_mode = "PAY_PER_REQUEST"
+  hash_key     = "conversationId"
+  range_key    = "sentAt"
+
+  attribute {
+    name = "conversationId"
+    type = "S"
+  }
+
+  attribute {
+    name = "sentAt"
+    type = "S"
+  }
+}
+
 resource "aws_dynamodb_table" "battles" {
   name         = "${var.project_name}-battles"
   billing_mode = "PAY_PER_REQUEST"
@@ -392,7 +409,8 @@ resource "aws_iam_role_policy" "amplify_bedrock_policy" {
         ],
         Resource = [
           aws_dynamodb_table.profiles.arn,
-          aws_dynamodb_table.battles.arn
+          aws_dynamodb_table.battles.arn,
+          aws_dynamodb_table.messages.arn
         ]
       }
     ]
@@ -419,6 +437,7 @@ resource "aws_amplify_app" "app" {
     BEDROCK_MAX_TOKENS        = "500"
     DYNAMODB_PROFILE_TABLE    = aws_dynamodb_table.profiles.name
     DYNAMODB_BATTLES_TABLE    = aws_dynamodb_table.battles.name
+    DYNAMODB_MESSAGES_TABLE   = aws_dynamodb_table.messages.name
   }
 
   lifecycle {

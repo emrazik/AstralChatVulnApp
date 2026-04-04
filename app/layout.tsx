@@ -1,7 +1,9 @@
 import "./globals.css";
 import type { ReactNode } from "react";
 import { AuthProvider } from "@/components/AuthProvider";
+import { CelesteProvider } from "@/components/CelesteProvider";
 import { Navbar } from "@/components/Navbar";
+import { CelesteWidget } from "@/components/CelesteWidget";
 import { Toaster } from "@/components/ui/sonner";
 
 export const metadata = {
@@ -18,9 +20,12 @@ export default function RootLayout({ children }: RootLayoutProps) {
     <html lang="en" className="dark">
       <body>
         <AuthProvider>
-          <Navbar />
-          <main className="min-h-[calc(100vh-3.5rem)]">{children}</main>
-          <Toaster />
+          <CelesteProvider>
+            <Navbar />
+            <main className="min-h-[calc(100vh-3.5rem)]">{children}</main>
+            <CelesteWidget />
+            <Toaster />
+          </CelesteProvider>
         </AuthProvider>
       </body>
     </html>

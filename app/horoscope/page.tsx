@@ -1,6 +1,4 @@
-import Link from "next/link";
 import { Sparkles } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -8,6 +6,7 @@ import {
   CardHeader,
   CardTitle
 } from "@/components/ui/card";
+import { AskCelesteButton } from "@/components/AskCelesteButton";
 import { ZODIAC_SIGNS, ELEMENT_COLORS } from "@/lib/zodiac";
 import { cn } from "@/lib/utils";
 
@@ -65,15 +64,11 @@ export default function HoroscopePage() {
                 <span className="font-medium text-astral-text">Tone: </span>
                 {sign.tone}
               </p>
-              <Link href={`/chat?q=${encodeURIComponent(`Tell me about ${sign.name}`)}`}>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="mt-1 w-full border-indigo-400/30 text-astral-indigo hover:bg-indigo-500/10"
-                >
-                  Ask Celeste about {sign.name}
-                </Button>
-              </Link>
+              <AskCelesteButton
+                question={`Tell me about ${sign.name}`}
+                label={`Ask Celeste about ${sign.name}`}
+                className="mt-1 w-full border-indigo-400/30 text-astral-indigo hover:bg-indigo-500/10"
+              />
             </CardContent>
           </Card>
         ))}

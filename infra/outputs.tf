@@ -38,6 +38,11 @@ output "battles_table_name" {
   description = "DynamoDB table for battle state"
 }
 
+output "messages_table_name" {
+  value       = aws_dynamodb_table.messages.name
+  description = "DynamoDB table for direct messages"
+}
+
 output "amplify_app_id" {
   value       = try(aws_amplify_app.app[0].id, null)
   description = "Set when enable_amplify_hosting is true"

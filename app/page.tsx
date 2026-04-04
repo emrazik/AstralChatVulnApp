@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { Sparkles, MessageCircle, Heart, Star } from "lucide-react";
+import { Sparkles, MessageCircle, Heart, Star, Moon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useAuth } from "@/components/AuthProvider";
+import { useCeleste } from "@/components/CelesteProvider";
 
 const FEATURES = [
   {
@@ -29,6 +30,7 @@ const FEATURES = [
 
 export default function LandingPage() {
   const { session } = useAuth();
+  const { openCeleste } = useCeleste();
   const isAuthenticated = !!session?.authenticated;
 
   return (
@@ -54,12 +56,14 @@ export default function LandingPage() {
 
         <div className="flex flex-wrap justify-center gap-3">
           {isAuthenticated ? (
-            <Link href="/chat">
-              <Button size="lg" className="bg-indigo-500 text-white hover:bg-indigo-600">
-                <MessageCircle className="mr-2 h-4 w-4" />
-                Chat with Celeste
-              </Button>
-            </Link>
+            <Button
+              size="lg"
+              className="bg-indigo-500 text-white hover:bg-indigo-600"
+              onClick={() => openCeleste()}
+            >
+              <Moon className="mr-2 h-4 w-4" />
+              Chat with Celeste
+            </Button>
           ) : (
             <>
               <Link href="/signup">

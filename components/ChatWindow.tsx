@@ -26,6 +26,7 @@ type PdfAttachment = {
 
 type ChatWindowProps = {
   initialQuestion?: string;
+  compact?: boolean;
 };
 
 function validatePdfClientSide(file: File): string | null {
@@ -44,7 +45,7 @@ function validatePdfClientSide(file: File): string | null {
   return null;
 }
 
-export default function ChatWindow({ initialQuestion }: ChatWindowProps) {
+export default function ChatWindow({ initialQuestion, compact }: ChatWindowProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       role: "celeste",
@@ -297,8 +298,8 @@ export default function ChatWindow({ initialQuestion }: ChatWindowProps) {
       )}
 
       {/* Input bar */}
-      <div className="border-t border-indigo-300/15 bg-slate-900/50 p-4 backdrop-blur">
-        <form className="mx-auto flex max-w-4xl gap-2" onSubmit={submitMessage}>
+      <div className={cn("border-t border-indigo-300/15 bg-slate-900/50 backdrop-blur", compact ? "p-3" : "p-4")}>
+        <form className={cn("flex gap-2", !compact && "mx-auto max-w-4xl")} onSubmit={submitMessage}>
           <input
             ref={fileInputRef}
             type="file"

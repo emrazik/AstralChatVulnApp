@@ -4,7 +4,8 @@ const appRequired = [
   "BEDROCK_KNOWLEDGE_BASE_ID",
   "BEDROCK_MODEL_ARN",
   "DYNAMODB_PROFILE_TABLE",
-  "DYNAMODB_BATTLES_TABLE"
+  "DYNAMODB_BATTLES_TABLE",
+  "DYNAMODB_MESSAGES_TABLE"
 ] as const;
 
 const cognitoPlaceholderKeys = new Set<string>(["COGNITO_CLIENT_ID", "COGNITO_USER_POOL_ID"]);
@@ -76,6 +77,7 @@ export function readEnv() {
     cognitoUserPoolId: cognito.cognitoUserPoolId,
     cognitoClientId: cognito.cognitoClientId,
     profileTableName: process.env.DYNAMODB_PROFILE_TABLE as string,
-    battlesTableName: process.env.DYNAMODB_BATTLES_TABLE as string
+    battlesTableName: process.env.DYNAMODB_BATTLES_TABLE as string,
+    messagesTableName: process.env.DYNAMODB_MESSAGES_TABLE as string
   };
 }
