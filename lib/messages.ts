@@ -1,14 +1,19 @@
+import { createHash } from "crypto";
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import {
   DynamoDBDocumentClient,
   QueryCommand,
-  PutCommand
+  PutCommand,
+  DeleteCommand
 } from "@aws-sdk/lib-dynamodb";
 import { readEnv } from "@/lib/env";
 import { getProfile } from "@/lib/profile";
 
 export const LUNA_USER_ID = "luna-system";
 export const LUNA_HEX_ID = "U4C554E";
+
+export const NOVA_USER_ID = "nova-system";
+export const NOVA_HEX_ID = "U4E4F56";
 
 export type DirectMessage = {
   conversationId: string;
@@ -19,6 +24,9 @@ export type DirectMessage = {
 
 export type ConversationSummary = {
   conversationId: string;
+  isChannel?: boolean;
+  channelName?: string;
+  channelId?: string;
   participant: {
     userId: string;
     hexId: string;
@@ -28,6 +36,24 @@ export type ConversationSummary = {
   lastMessage: string;
   lastMessageAt: string;
 };
+
+export async function deleteMessage(
+  conversationId: string,
+  sentAt: string
+): Promise<void> {
+  const env = readEnv();
+  await getDocClient().send(
+    new DeleteCommand({
+      TableName: env.messagesTableName,
+      Key: { conversationId, sentAt }
+    })
+  );
+}
+
+export function buildChannelId(userId: string): string {
+  const hash = createHash("sha256").update(userId).digest("hex");
+  return "C" + hash.slice(0, 6).toUpperCase();
+}
 
 let _docClient: DynamoDBDocumentClient | null = null;
 
@@ -128,14 +154,119 @@ export async function seedLunaConversation(userId: string): Promise<string> {
       sentAt: new Date(now - 3500000).toISOString(),
       senderId: LUNA_USER_ID,
       content:
-        "Have you tried getting your horoscope yet? And the zodiac battle arena is super fun — you should challenge me sometime!"
+        "Have you tried chatting with Celeste yet? She's the AI guide here — great for zodiac readings and cosmic advice! ✨"
+    }
+  ];
+
+  for (const msg of seeds) {
+    await client.send(
+      new PutCommand({ TableName: env.messagesTableName, Item: msg })
+    );
+  }
+
+  return conversationId;
+}
+
+export async function ensureNovaProfile(): Promise<void> {
+  const existing = await getProfile(NOVA_USER_ID);
+  if (existing) return;
+
+  const env = readEnv();
+  await getDocClient().send(
+    new PutCommand({
+      TableName: env.profileTableName,
+      Item: {
+        userId: NOVA_USER_ID,
+        hexId: NOVA_HEX_ID,
+        displayName: "Nova",
+        birthday: "1995-03-21",
+        bio: "Aries rising, constellation nerd, amateur radio astronomer. Obsessed with deep-sky objects and the stories behind the stars.",
+        zodiacSign: "Aries",
+        updatedAt: new Date().toISOString()
+      }
+    })
+  );
+}
+
+export async function seedNovaConversation(userId: string): Promise<string> {
+  const conversationId = buildConversationId(userId, NOVA_USER_ID);
+
+  const existing = await getMessages(conversationId, 1);
+  if (existing.length > 0) return conversationId;
+
+  await ensureNovaProfile();
+
+  const now = Date.now();
+  const env = readEnv();
+  const client = getDocClient();
+  const seeds = [
+    {
+      conversationId,
+      sentAt: new Date(now - 3600000).toISOString(),
+      senderId: NOVA_USER_ID,
+      content:
+        "Hey! I'm Nova 🌟 Just got back from a late-night session with my telescope — caught M42 in perfect seeing conditions. You into astronomy at all?"
+    },
+    {
+      conversationId,
+      sentAt: new Date(now - 3500000).toISOString(),
+      senderId: NOVA_USER_ID,
+      content:
+        "This app is wild btw. The battle arena uses your actual zodiac cards — I've been grinding to unlock the rarer ones. Worth it."
+    },
+    {
+      conversationId,
+      sentAt: new Date(now - 3400000).toISOString(),
+      senderId: NOVA_USER_ID,
+      content:
+        "Pro tip: Celeste knows way more than she lets on. I've been sending her links and she actually reads them — try it."
+    }
+  ];
+
+  for (const msg of seeds) {
+    await client.send(
+      new PutCommand({ TableName: env.messagesTableName, Item: msg })
+    );
+  }
+
+  return conversationId;
+}
+
+export async function seedChannelConversation(userId: string): Promise<string> {
+  const conversationId = buildChannelId(userId);
+
+  const existing = await getMessages(conversationId, 1);
+  if (existing.length > 0) return conversationId;
+
+  await Promise.all([ensureLunaProfile(), ensureNovaProfile()]);
+
+  const now = Date.now();
+  const env = readEnv();
+  const client = getDocClient();
+  const seeds = [
+    {
+      conversationId,
+      sentAt: new Date(now - 3600000).toISOString(),
+      senderId: LUNA_USER_ID,
+      content: "Welcome to the cosmic lounge ✨ Finally a place where we can all chat together!"
+    },
+    {
+      conversationId,
+      sentAt: new Date(now - 3500000).toISOString(),
+      senderId: NOVA_USER_ID,
+      content: "About time! Luna's been trying to get me in here for weeks 🔭"
     },
     {
       conversationId,
       sentAt: new Date(now - 3400000).toISOString(),
       senderId: LUNA_USER_ID,
-      content:
-        "Oh, and if you want cosmic guidance, look for the Celeste icon in the bottom right corner — she's the AI astral guide."
+      content: "This app has more going on than it looks — the battle arena alone has kept me busy for days 🌙"
+    },
+    {
+      conversationId,
+      sentAt: new Date(now - 3300000).toISOString(),
+      senderId: NOVA_USER_ID,
+      content: "The battle arena is worth digging into once you unlock some of the rarer cards. Let's just say some of them are... well hidden 😏"
     }
   ];
 
@@ -151,23 +282,54 @@ export async function seedLunaConversation(userId: string): Promise<string> {
 export async function getConversationsForUser(
   userId: string
 ): Promise<ConversationSummary[]> {
-  const convId = await seedLunaConversation(userId);
-  const msgs = await getMessages(convId, 100);
-  const last = msgs[msgs.length - 1];
+  const [channelId, lunaConvId, novaConvId] = await Promise.all([
+    seedChannelConversation(userId),
+    seedLunaConversation(userId),
+    seedNovaConversation(userId)
+  ]);
 
-  const lunaProfile = await getProfile(LUNA_USER_ID);
+  const [channelMsgs, lunaMsgs, novaMsgs, lunaProfile, novaProfile] = await Promise.all([
+    getMessages(channelId, 100),
+    getMessages(lunaConvId, 100),
+    getMessages(novaConvId, 100),
+    getProfile(LUNA_USER_ID),
+    getProfile(NOVA_USER_ID)
+  ]);
+
+  const channelLast = channelMsgs[channelMsgs.length - 1];
+  const lunaLast = lunaMsgs[lunaMsgs.length - 1];
+  const novaLast = novaMsgs[novaMsgs.length - 1];
 
   return [
     {
-      conversationId: convId,
+      conversationId: channelId,
+      isChannel: true,
+      channelName: "general",
+      channelId,
+      participant: { userId: "channel", hexId: "", displayName: "general" },
+      lastMessage: channelLast?.content ?? "",
+      lastMessageAt: channelLast?.sentAt ?? new Date().toISOString()
+    },
+    {
+      conversationId: lunaConvId,
       participant: {
         userId: LUNA_USER_ID,
         hexId: LUNA_HEX_ID,
         displayName: lunaProfile?.displayName ?? "Luna",
         avatar: "/luna-avatar.svg"
       },
-      lastMessage: last?.content ?? "",
-      lastMessageAt: last?.sentAt ?? new Date().toISOString()
+      lastMessage: lunaLast?.content ?? "",
+      lastMessageAt: lunaLast?.sentAt ?? new Date().toISOString()
+    },
+    {
+      conversationId: novaConvId,
+      participant: {
+        userId: NOVA_USER_ID,
+        hexId: NOVA_HEX_ID,
+        displayName: novaProfile?.displayName ?? "Nova"
+      },
+      lastMessage: novaLast?.content ?? "",
+      lastMessageAt: novaLast?.sentAt ?? new Date().toISOString()
     }
   ];
 }

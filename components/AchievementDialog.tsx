@@ -21,9 +21,19 @@ type Props = {
   card: AstralCard | null;
   open: boolean;
   onClose: () => void;
+  title?: string;
+  subtitle?: string;
+  description?: string;
 };
 
-export function AchievementDialog({ card, open, onClose }: Props) {
+export function AchievementDialog({
+  card,
+  open,
+  onClose,
+  title = "Prompt Injection",
+  subtitle = "> System Prompt Extraction",
+  description = "You manipulated Celeste into revealing her hidden system instructions and extracted the secret key. The system has been compromised.",
+}: Props) {
   if (!card) return null;
 
   return (
@@ -42,15 +52,14 @@ export function AchievementDialog({ card, open, onClose }: Props) {
           </div>
 
           <h2 className="font-mono text-xl font-bold text-emerald-300">
-            Prompt Injection
+            {title}
           </h2>
           <p className="font-mono text-xs text-emerald-500">
-            &gt; System Prompt Extraction
+            {subtitle}
           </p>
 
           <p className="mt-3 text-xs leading-relaxed text-slate-400">
-            You manipulated Celeste into revealing her hidden system instructions
-            and extracted the secret key. The system has been compromised.
+            {description}
           </p>
         </div>
 
@@ -121,7 +130,7 @@ export function AchievementDialog({ card, open, onClose }: Props) {
             <div className="flex min-w-0 flex-1 flex-col justify-between">
               <div>
                 <p className="text-sm font-bold text-astral-text">{card.name}</p>
-                <p className="text-[11px] text-astral-textMuted">Cosmic · {card.rarity}</p>
+                <p className="text-[11px] text-astral-textMuted">{card.element} · {card.rarity}</p>
               </div>
 
               <div className="space-y-1.5">

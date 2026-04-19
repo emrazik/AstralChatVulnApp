@@ -1,0 +1,27 @@
+# AstralChat docker-compose — intended for YOUR server deployment.
+# The referenced .env.docker file must live on the host (it's gitignored)
+# and contains the real AWS / Cognito / DynamoDB values.
+#
+# Usage:
+#   cp .env.docker.example .env.docker   # then fill in real values
+#   docker compose up -d --build
+
+services:
+  astralchat:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: astralchat:latest
+    container_name: astralchat
+    restart: unless-stopped
+    env_file:
+      - .env.docker
+    # Only expose on 127.0.0.1 — front the container with a reverse proxy
+    # or Cloudflare Tunnel rather than exposing port 3000 publicly.
+    ports:
+      - "127.0.0.1:3000:3000"
+    # Drop capabilities — this is a deliberately vulnerable app.
+    # The less the container can do on the host, the safer running it is.
+    security_opt:
+      - no-new-privileges:true
+    read_only: false

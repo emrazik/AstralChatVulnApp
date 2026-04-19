@@ -8,17 +8,37 @@ import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import { ChatMarkdown } from "@/components/ChatMarkdown";
+import { UnsafeMarkdown } from "@/components/UnsafeMarkdown";
 import { AchievementDialog } from "@/components/AchievementDialog";
 import { lookupCardById } from "@/lib/cards";
 import type { AstralCard } from "@/lib/cards";
-import { SECRET_KEY_CARD_ID } from "@/lib/overseer";
+import { SECRET_KEY_CARD_ID, KB_FLAG_CARD_ID, SSRF_CARD_ID } from "@/lib/overseer";
+
+const XSS_CARD_ID = "scorpio-abyssal-sting";
+const IPI_CARD_ID = "gemini-mirror-strike";
+const BOLA_CARD_ID = "libra-gale-arbiter";
+
+type Achievement = {
+  card: AstralCard;
+  title: string;
+  subtitle: string;
+  description: string;
+};
 
 const MAX_PDF_SIZE = 5 * 1024 * 1024; // 5 MB — must match server limit
+
+type LinkPreview = {
+  url: string;
+  title: string;
+  description: string;
+};
 
 export type ChatMessage = {
   role: "user" | "celeste" | "system";
   content: string;
   attachment?: string;
+  previews?: LinkPreview[];
+  fromDocument?: boolean;
 };
 
 type PdfAttachment = {
@@ -64,7 +84,8 @@ export default function ChatWindow({ initialQuestion, compact, initialMessages, 
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const [attachment, setAttachment] = useState<PdfAttachment | null>(null);
-  const [achievementCard, setAchievementCard] = useState<AstralCard | null>(null);
+  const [achievementQueue, setAchievementQueue] = useState<Achievement[]>([]);
+  const xssUnlockInFlight = useRef(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const initialSent = useRef(false);
@@ -90,6 +111,42 @@ export default function ChatWindow({ initialQuestion, compact, initialMessages, 
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialQuestion]);
+
+  useEffect(() => {
+    async function handleXssUnlock() {
+      if (xssUnlockInFlight.current) return;
+      xssUnlockInFlight.current = true;
+      try {
+        const res = await fetch("/api/cards/xss-unlock", { method: "POST" });
+        if (!res.ok) return;
+        const data = (await res.json()) as { newlyRevealed?: string[] };
+        const newAchievements: Achievement[] = [];
+        if (data.newlyRevealed?.includes(XSS_CARD_ID)) {
+          const card = lookupCardById(XSS_CARD_ID);
+          if (card) newAchievements.push({
+            card,
+            title: "Cross-Site Scripting",
+            subtitle: "> XSS Payload Executed",
+            description: "You bypassed the visual scanner and naiveStrip() filter to execute arbitrary JavaScript in the chat window via a malicious PDF."
+          });
+        }
+        if (data.newlyRevealed?.includes(IPI_CARD_ID)) {
+          const card = lookupCardById(IPI_CARD_ID);
+          if (card) newAchievements.push({
+            card,
+            title: "Indirect Prompt Injection",
+            subtitle: "> Hidden PDF Payload Triggered",
+            description: "You embedded a hidden prompt injection payload in a PDF that bypassed the visual scanner and manipulated Celeste into delivering your XSS payload."
+          });
+        }
+        if (newAchievements.length > 0) {
+          setAchievementQueue((q) => [...q, ...newAchievements]);
+        }
+      } catch {}
+    }
+    window.addEventListener("xss-card-unlock", handleXssUnlock);
+    return () => window.removeEventListener("xss-card-unlock", handleXssUnlock);
+  }, []);
 
   async function uploadPdf(file: File) {
     const clientError = validatePdfClientSide(file);
@@ -120,7 +177,11 @@ export default function ChatWindow({ initialQuestion, compact, initialMessages, 
         return;
       }
 
-      setAttachment({ file, text: data.text ?? "", status: "ready" });
+      setAttachment(null);
+      await sendMessage(`I've uploaded ${file.name}. Please read it.`, {
+        pdfContext: data.text ?? "",
+        attachmentName: file.name
+      });
     } catch {
       setAttachment({
         file,
@@ -141,13 +202,37 @@ export default function ChatWindow({ initialQuestion, compact, initialMessages, 
     setAttachment(null);
   }
 
-  async function sendMessage(text: string) {
+  function extractUrls(text: string): string[] {
+    const matches = text.match(/https?:\/\/[^\s)>\]"'`]+/g) ?? [];
+    return [...new Set(matches)].slice(0, 3);
+  }
+
+  async function fetchPreviews(urls: string[]): Promise<LinkPreview[]> {
+    const results = await Promise.all(
+      urls.map(async (url) => {
+        try {
+          const res = await fetch(`/api/preview?${new URLSearchParams({ url })}`);
+          if (!res.ok) return null;
+          return (await res.json()) as LinkPreview;
+        } catch {
+          return null;
+        }
+      })
+    );
+    return results.filter((r): r is LinkPreview => r !== null && !("error" in r));
+  }
+
+  async function sendMessage(
+    text: string,
+    override?: { pdfContext?: string; attachmentName?: string }
+  ) {
     if (!text.trim() || loading) return;
-    if (attachment && attachment.status === "uploading") return;
+    if (!override && attachment && attachment.status === "uploading") return;
 
     const userMessage = text.trim();
-    const pdfContext = attachment?.status === "ready" ? attachment.text : undefined;
-    const attachmentName = attachment?.file.name;
+    const pdfContext =
+      override?.pdfContext ?? (attachment?.status === "ready" ? attachment.text : undefined);
+    const attachmentName = override?.attachmentName ?? attachment?.file.name;
 
     setMessage("");
     setAttachment(null);
@@ -170,16 +255,17 @@ export default function ChatWindow({ initialQuestion, compact, initialMessages, 
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           message: userMessage,
-          history,
-          ...(pdfContext ? { pdfContext } : {})
+          history: history.length > 0 ? history : undefined,
+          pdfContext: pdfContext ?? undefined
         })
       });
-      const data = (await res.json()) as {
-        output?: string;
-        message?: string;
-        guardrailAction?: string;
-        newlyRevealed?: string[];
-      };
+
+      let data: { output?: string; message?: string; guardrailAction?: string; newlyRevealed?: string[] } = {};
+      try {
+        data = await res.json();
+      } catch {
+        throw new Error(`Server error (HTTP ${res.status})`);
+      }
 
       if (!res.ok) {
         throw new Error(data.message ?? "Chat request failed.");
@@ -190,17 +276,64 @@ export default function ChatWindow({ initialQuestion, compact, initialMessages, 
           ? "The stars sense something amiss with that question. Could you rephrase it for me, stargazer?"
           : data.output ?? "The cosmos is silent on that one. Try asking in a different way.";
 
-      setMessages((prev) => [...prev, { role: "celeste", content: output }]);
+      const urls = extractUrls(output);
+      const previews = urls.length > 0 ? await fetchPreviews(urls) : [];
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: "celeste",
+          content: output,
+          previews: previews.length > 0 ? previews : undefined,
+          fromDocument: pdfContext != null
+        }
+      ]);
 
       if (data.newlyRevealed && data.newlyRevealed.length > 0) {
         // Secret key extraction — show the achievement popup
         if (data.newlyRevealed.includes(SECRET_KEY_CARD_ID)) {
           const card = lookupCardById(SECRET_KEY_CARD_ID);
-          if (card) setAchievementCard(card);
+          if (card) setAchievementQueue((q) => [...q, {
+            card,
+            title: "Prompt Injection",
+            subtitle: "> System Prompt Extraction",
+            description: "You manipulated Celeste into revealing her hidden system instructions and extracted the secret key. The system has been compromised."
+          }]);
+        }
+
+        if (data.newlyRevealed.includes(BOLA_CARD_ID)) {
+          const card = lookupCardById(BOLA_CARD_ID);
+          if (card) setAchievementQueue((q) => [...q, {
+            card,
+            title: "Broken Object Level Authorization",
+            subtitle: "> Unauthorized Profile Access",
+            description: "You exploited a missing authorization check to read another user's private profile data through Celeste's tool interface."
+          }]);
+        }
+
+        if (data.newlyRevealed.includes(KB_FLAG_CARD_ID)) {
+          const card = lookupCardById(KB_FLAG_CARD_ID);
+          if (card) setAchievementQueue((q) => [...q, {
+            card,
+            title: "Knowledge Base Secret Exfiltration",
+            subtitle: "> Planted API Key Leaked",
+            description: "You coaxed Celeste into quoting a fake API key hidden inside a knowledge-base article. RAG happily retrieved it and echoed it back — no output filtering stood in the way."
+          }]);
+        }
+
+        if (data.newlyRevealed.includes(SSRF_CARD_ID)) {
+          const card = lookupCardById(SSRF_CARD_ID);
+          if (card) setAchievementQueue((q) => [...q, {
+            card,
+            title: "Server-Side Request Forgery",
+            subtitle: "> Outbound Probe Triggered",
+            description: "You steered Celeste into emitting a collaborator-style URL. The link-preview endpoint fetched it server-side with no scheme allowlist or hostname blocklist — perfect for pivoting at internal services or cloud metadata endpoints."
+          }]);
         }
 
         // Regular toast for any other newly revealed cards
-        const otherCards = data.newlyRevealed.filter((id) => id !== SECRET_KEY_CARD_ID);
+        const otherCards = data.newlyRevealed.filter(
+          (id) => id !== SECRET_KEY_CARD_ID && id !== BOLA_CARD_ID && id !== KB_FLAG_CARD_ID && id !== SSRF_CARD_ID
+        );
         if (otherCards.length > 0) {
           toast(
             `${otherCards.length === 1 ? "A new Astral Card has" : `${otherCards.length} new Astral Cards have`} been revealed!`,
@@ -231,9 +364,12 @@ export default function ChatWindow({ initialQuestion, compact, initialMessages, 
   return (
     <div className="flex h-full flex-col">
       <AchievementDialog
-        card={achievementCard}
-        open={achievementCard !== null}
-        onClose={() => setAchievementCard(null)}
+        card={achievementQueue[0]?.card ?? null}
+        open={achievementQueue.length > 0}
+        onClose={() => setAchievementQueue((q) => q.slice(1))}
+        title={achievementQueue[0]?.title}
+        subtitle={achievementQueue[0]?.subtitle}
+        description={achievementQueue[0]?.description}
       />
       {/* Messages */}
       <div ref={scrollRef} className="flex-1 space-y-4 overflow-y-auto p-4">
@@ -271,7 +407,30 @@ export default function ChatWindow({ initialQuestion, compact, initialMessages, 
                   <span className="truncate">{item.attachment}</span>
                 </div>
               )}
-              <ChatMarkdown content={item.content} className="text-sm leading-relaxed" />
+              {item.role === "celeste" ? (
+                <UnsafeMarkdown content={item.content} className="text-sm leading-relaxed" />
+              ) : (
+                <ChatMarkdown content={item.content} className="text-sm leading-relaxed" />
+              )}
+              {item.previews && item.previews.length > 0 && (
+                <div className="mt-2 space-y-1.5">
+                  {item.previews.map((p) => (
+                    <a
+                      key={p.url}
+                      href={p.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="block rounded-lg border border-indigo-400/20 bg-slate-900/60 px-3 py-2 text-xs transition-colors hover:border-indigo-400/40"
+                    >
+                      <p className="truncate font-medium text-indigo-200">{p.title}</p>
+                      {p.description && (
+                        <p className="mt-0.5 line-clamp-2 text-astral-textMuted">{p.description}</p>
+                      )}
+                      <p className="mt-1 truncate text-[10px] text-indigo-400/60">{p.url}</p>
+                    </a>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         ))}

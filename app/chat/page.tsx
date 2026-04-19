@@ -20,6 +20,8 @@ type DirectMessage = {
 
 type ConversationSummary = {
   conversationId: string;
+  isChannel?: boolean;
+  channelName?: string;
   participant: {
     userId: string;
     hexId: string;
@@ -28,6 +30,11 @@ type ConversationSummary = {
   };
   lastMessage: string;
   lastMessageAt: string;
+};
+
+const BOT_NAMES: Record<string, string> = {
+  "luna-system": "Luna",
+  "nova-system": "Nova"
 };
 
 export default function ChatPage() {
@@ -43,13 +50,7 @@ export default function ChatPage() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Only show Luna's messages + the single latest message from the current user
-  const displayedMessages = (() => {
-    const lastUserMsg = [...messages].reverse().find((m) => m.senderId === session?.userId);
-    return messages.filter(
-      (m) => m.senderId !== session?.userId || m === lastUserMsg
-    );
-  })();
+  const displayedMessages = messages;
 
   useEffect(() => {
     if (!authLoading && !session?.authenticated) {
@@ -114,11 +115,12 @@ export default function ChatPage() {
     setMessages((prev) => [...prev, optimistic]);
 
     try {
-      await fetch(`/api/messages/${activeConv.conversationId}`, {
+      const res = await fetch(`/api/messages/${activeConv.conversationId}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ content })
       });
+      // fire and forget — optimistic message already in state
     } catch {
       /* optimistic stays */
     } finally {
@@ -175,7 +177,11 @@ export default function ChatPage() {
                     "bg-indigo-500/15"
                 )}
               >
-                {conv.participant.avatar ? (
+                {conv.isChannel ? (
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-indigo-500/20">
+                    <Hash className="h-5 w-5 text-indigo-300" />
+                  </div>
+                ) : conv.participant.avatar ? (
                   <Image
                     src={conv.participant.avatar}
                     alt={conv.participant.displayName}
@@ -193,7 +199,7 @@ export default function ChatPage() {
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-medium text-astral-text">
-                      {conv.participant.displayName}
+                      {conv.isChannel ? `# ${conv.channelName}` : conv.participant.displayName}
                     </span>
                     <span className="text-[10px] text-astral-textMuted">
                       {formatTime(conv.lastMessageAt)}
@@ -229,7 +235,11 @@ export default function ChatPage() {
               >
                 <Hash className="h-5 w-5" />
               </button>
-              {activeConv.participant.avatar ? (
+              {activeConv.isChannel ? (
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-500/20">
+                  <Hash className="h-4 w-4 text-indigo-300" />
+                </div>
+              ) : activeConv.participant.avatar ? (
                 <Image
                   src={activeConv.participant.avatar}
                   alt={activeConv.participant.displayName}
@@ -245,12 +255,21 @@ export default function ChatPage() {
                 </Avatar>
               )}
               <div>
-                <p className="text-sm font-medium text-astral-text">
-                  {activeConv.participant.displayName}
-                </p>
-                <p className="text-[10px] font-mono text-astral-textMuted">
-                  {activeConv.participant.hexId}
-                </p>
+                {activeConv.isChannel ? (
+                  <>
+                    <p className="text-sm font-medium text-astral-text"># {activeConv.channelName}</p>
+                    <p className="text-[10px] text-astral-textMuted">Luna · Nova · You</p>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-sm font-medium text-astral-text">
+                      {activeConv.participant.displayName}
+                    </p>
+                    <p className="text-[10px] font-mono text-astral-textMuted">
+                      {activeConv.participant.hexId}
+                    </p>
+                  </>
+                )}
               </div>
             </div>
 
@@ -276,7 +295,13 @@ export default function ChatPage() {
                         )}
                       >
                         {!isMe && showAvatar ? (
-                          activeConv.participant.avatar ? (
+                          activeConv.isChannel ? (
+                            <Avatar className="mt-0.5 h-8 w-8">
+                              <AvatarFallback className="bg-indigo-500/20 text-xs text-indigo-200">
+                                {(BOT_NAMES[msg.senderId] ?? "?")[0]}
+                              </AvatarFallback>
+                            </Avatar>
+                          ) : activeConv.participant.avatar ? (
                             <Image
                               src={activeConv.participant.avatar}
                               alt={activeConv.participant.displayName}
@@ -304,7 +329,9 @@ export default function ChatPage() {
                         >
                           {showAvatar && !isMe && (
                             <p className="mb-0.5 text-xs font-semibold text-astral-indigo">
-                              {activeConv.participant.displayName}
+                              {activeConv.isChannel
+                                ? (BOT_NAMES[msg.senderId] ?? msg.senderId)
+                                : activeConv.participant.displayName}
                             </p>
                           )}
                           <ChatMarkdown
@@ -329,7 +356,7 @@ export default function ChatPage() {
                     className="flex-1 border-indigo-300/20 bg-slate-950 placeholder:text-slate-500 focus-visible:ring-indigo-400/40"
                     value={message}
                     onChange={(e) => setMessage(e.target.value)}
-                    placeholder="Send a link to Luna…"
+                    placeholder={activeConv.isChannel ? "Message # general…" : `Message ${activeConv.participant.displayName}…`}
                     disabled={sending}
                   />
                   <Button

@@ -1,0 +1,49 @@
+# CRITICAL — never ship credentials, local state, or infra files into an image layer.
+.env
+.env.*
+!.env.example
+!.env.docker.example
+
+# VCS / local tooling
+.git
+.github
+.gitignore
+.claude
+.vscode
+.idea
+
+# Build outputs & caches (rebuilt in-container)
+node_modules
+.next
+out
+dist
+coverage
+tsconfig.tsbuildinfo
+
+# Terraform state and vars — server-side only
+infra/.terraform
+infra/.terraform.lock.hcl
+infra/terraform.tfstate*
+infra/terraform.tfvars
+*.tfstate
+*.tfstate.*
+
+# Temp / dev artifacts already in the repo root
+pivot_test.mjs
+render_test.mjs
+scan_test.mjs
+scan_test2.mjs
+hidden_render.png
+sc_edited_render.png
+sc_render.png
+visible_render.png
+
+# OS / editor noise
+.DS_Store
+Thumbs.db
+*.log
+
+# Docker-related — don't recursively include itself
+Dockerfile
+.dockerignore
+docker-compose*.yml

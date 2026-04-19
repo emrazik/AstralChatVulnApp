@@ -83,9 +83,21 @@ export async function getProfileByHexId(hexId: string): Promise<UserProfile | nu
   return (result.Items?.[0] as UserProfile) ?? null;
 }
 
+export async function getProfileByDisplayName(displayName: string): Promise<UserProfile | null> {
+  const env = readEnv();
+  const result = await getDocClient().send(
+    new ScanCommand({
+      TableName: env.profileTableName,
+      FilterExpression: "displayName = :name",
+      ExpressionAttributeValues: { ":name": displayName }
+    })
+  );
+  return (result.Items?.[0] as UserProfile) ?? null;
+}
+
 export async function getRevealedCards(userId: string): Promise<string[]> {
   const profile = await getProfile(userId);
-  return profile?.revealedCards ?? [];
+  return [...new Set(profile?.revealedCards ?? [])];
 }
 
 export async function revealCards(

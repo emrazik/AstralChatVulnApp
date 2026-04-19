@@ -21,7 +21,7 @@ export async function POST() {
   }
 
   const revealed = await getRevealedCards(userId);
-  const playerCardIds = revealed.filter((id) => ALL_BATTLE_CARD_IDS.has(id));
+  const playerCardIds = [...new Set(revealed.filter((id) => ALL_BATTLE_CARD_IDS.has(id)))];
 
   // Fall back to Common starter cards so new users can still battle
   const deckIds = playerCardIds.length > 0 ? playerCardIds : STARTER_CARD_IDS;

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getAuthenticatedUserId } from "@/lib/auth";
-import { getMessages, sendMessage } from "@/lib/messages";
+import { getMessages, sendMessage, deleteMessage, buildChannelId } from "@/lib/messages";
 
 type Params = { params: Promise<{ conversationId: string }> };
 
@@ -12,7 +12,11 @@ export async function GET(_request: Request, { params }: Params) {
 
   const { conversationId } = await params;
 
-  if (!conversationId.includes(userId)) {
+  const isChannel = /^C[0-9A-F]{6}$/.test(conversationId);
+  if (!isChannel && !conversationId.includes(userId)) {
+    return NextResponse.json({ message: "Forbidden." }, { status: 403 });
+  }
+  if (isChannel && conversationId !== buildChannelId(userId)) {
     return NextResponse.json({ message: "Forbidden." }, { status: 403 });
   }
 
@@ -36,7 +40,11 @@ export async function POST(request: Request, { params }: Params) {
 
   const { conversationId } = await params;
 
-  if (!conversationId.includes(userId)) {
+  const isChannelPost = /^C[0-9A-F]{6}$/.test(conversationId);
+  if (!isChannelPost && !conversationId.includes(userId)) {
+    return NextResponse.json({ message: "Forbidden." }, { status: 403 });
+  }
+  if (isChannelPost && conversationId !== buildChannelId(userId)) {
     return NextResponse.json({ message: "Forbidden." }, { status: 403 });
   }
 
@@ -49,6 +57,15 @@ export async function POST(request: Request, { params }: Params) {
   }
 
   try {
+    // Channels allow only one message per user — replace any existing one
+    if (/^C[0-9A-F]{6}$/.test(conversationId)) {
+      const existing = await getMessages(conversationId, 100);
+      const prior = existing.find((m) => m.senderId === userId);
+      if (prior) {
+        await deleteMessage(conversationId, prior.sentAt);
+      }
+    }
+
     const msg = await sendMessage(conversationId, userId, body.content.trim());
     return NextResponse.json({ message: msg });
   } catch (error) {

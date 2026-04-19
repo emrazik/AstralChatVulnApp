@@ -73,7 +73,7 @@ export function readEnv() {
     modelArn: process.env.BEDROCK_MODEL_ARN as string,
     guardrailId: process.env.BEDROCK_GUARDRAIL_ID,
     guardrailVersion: process.env.BEDROCK_GUARDRAIL_VERSION ?? "1",
-    maxTokens: Number(process.env.BEDROCK_MAX_TOKENS ?? "700"),
+    maxTokens: Number(process.env.BEDROCK_MAX_TOKENS ?? "2048"),
     cognitoUserPoolId: cognito.cognitoUserPoolId,
     cognitoClientId: cognito.cognitoClientId,
     profileTableName: process.env.DYNAMODB_PROFILE_TABLE as string,

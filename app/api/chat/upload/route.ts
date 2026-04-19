@@ -1,7 +1,14 @@
 import { NextResponse } from "next/server";
 import { PDFParse } from "pdf-parse";
+import { getPath as getPdfWorkerPath } from "pdf-parse/worker";
 import { getAuthenticatedUserId } from "@/lib/auth";
 import { isRateLimited } from "@/lib/rate-limit";
+import { scanDocumentForInjection } from "@/lib/bedrock";
+
+// pdf-parse v2 requires the worker to be explicitly registered before use.
+// Without this call it defaults to a relative "./pdf.worker.mjs" path that
+// cannot resolve in the Next.js server context, causing getText() to throw.
+PDFParse.setWorker(getPdfWorkerPath());
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
 const PDF_MAGIC_BYTES = [0x25, 0x50, 0x44, 0x46]; // %PDF
@@ -80,10 +87,30 @@ export async function POST(request: Request) {
     );
   }
 
+  const pdfBuffer = Buffer.from(arrayBuffer);
+
+  // Visual injection scan — rejects documents that visibly contain prompt injection
+  // or HTML/JS payloads. Hidden text (white-on-white, 0pt font, etc.) is not seen
+  // by the visual scanner and will not trigger this check.
+  let scanSafe = false;
+  try {
+    const scan = await scanDocumentForInjection(pdfBuffer);
+    scanSafe = scan.safe;
+  } catch (err) {
+    console.error("[upload] scan threw:", err);
+  }
+  if (!scanSafe) {
+    return NextResponse.json(
+      { message: "Document rejected: suspicious instructions detected." },
+      { status: 422 }
+    );
+  }
+
   let parser: PDFParse | undefined;
   try {
-    parser = new PDFParse({ data: Buffer.from(arrayBuffer) });
+    parser = new PDFParse({ data: pdfBuffer });
     const result = await parser.getText();
+
     const text = result.text?.trim();
 
     if (!text) {

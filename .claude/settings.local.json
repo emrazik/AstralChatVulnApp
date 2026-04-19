@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install:*)",
+      "Bash(npx tsc:*)",
+      "Bash(node scan_test.mjs)",
+      "Bash(grep \"BEDROCK_MODEL_ARN\\\\|AWS_REGION\\\\|BEDROCK_REGION\" .env.local)",
+      "Bash(grep \"BEDROCK_MODEL_ARN\\\\|AWS_REGION\\\\|BEDROCK_REGION\" .env)",
+      "Bash(node -e ' *)",
+      "Bash(node --input-type=module -e ' *)",
+      "Bash(node -e \"const fs = require\\('fs'\\); const c = fs.readFileSync\\('.env.local','utf8'\\); console.log\\(c.substring\\(0,200\\)\\);\")",
+      "Bash(node render_test.mjs)"
+    ]
+  }
+}
