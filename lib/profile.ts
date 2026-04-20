@@ -101,7 +101,7 @@ export async function getProfileByDisplayName(displayName: string): Promise<User
 
 export async function getRevealedCards(userId: string): Promise<string[]> {
   const profile = await getProfile(userId);
-  return [...new Set(profile?.revealedCards ?? [])];
+  return [...new Set(profile?.revealedCards ?? DEFAULT_REVEALED_CARD_IDS)];
 }
 
 export async function revealCards(

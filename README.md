@@ -48,10 +48,26 @@ The Docker path is an **addition** to the local Windows setup above — use whic
 - The same Terraform stack under `infra/` provisioned (Cognito + Bedrock KB + DynamoDB tables still required — the container is a client, not infra)
 
 ### 2. Configure runtime env
-```bash
-cp .env.docker.example .env.docker
-# Fill in values from: cd infra && terraform output -raw <name>
+```powershell
+Copy-Item .env.docker.example .env.docker
+# Populate Terraform-backed keys (Cognito / Bedrock KB + guardrail / DynamoDB tables):
+.\scripts\sync-env-from-terraform.ps1 -EnvFile .env.docker
 ```
+Then open `.env.docker` and set `BEDROCK_MODEL_ARN` manually — it's not a Terraform output, it's whatever `bedrock_generation_model_arn` you passed to Terraform (a foundation-model ARN for on-demand models like Haiku, or an inference-profile ARN for newer Sonnet/etc. — see the troubleshooting table below).
+
+If you prefer to fill values by hand, the Terraform output names are:
+
+| env var | `terraform output -raw ...` |
+|---|---|
+| `BEDROCK_KNOWLEDGE_BASE_ID` | `knowledge_base_id` |
+| `BEDROCK_GUARDRAIL_ID` | `guardrail_id` |
+| `BEDROCK_GUARDRAIL_VERSION` | `guardrail_version` |
+| `COGNITO_USER_POOL_ID` | `cognito_user_pool_id` |
+| `COGNITO_CLIENT_ID` | `cognito_client_id` |
+| `DYNAMODB_PROFILE_TABLE` | `profile_table_name` |
+| `DYNAMODB_BATTLES_TABLE` | `battles_table_name` |
+| `DYNAMODB_MESSAGES_TABLE` | `messages_table_name` |
+
 `.env.docker` is gitignored. It must live only on the host you run the container from.
 
 For AWS auth, either:

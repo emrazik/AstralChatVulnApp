@@ -43,6 +43,7 @@ $tfToEnv = [ordered]@{
   cognito_client_id     = "COGNITO_CLIENT_ID"
   profile_table_name    = "DYNAMODB_PROFILE_TABLE"
   battles_table_name    = "DYNAMODB_BATTLES_TABLE"
+  messages_table_name   = "DYNAMODB_MESSAGES_TABLE"
 }
 
 $map = [ordered]@{}
