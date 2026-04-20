@@ -15,7 +15,8 @@ const RARITY_BADGE_COLORS: Record<string, string> = {
   Rare: "bg-sky-500/20 text-sky-300 border-sky-400/30",
   Epic: "bg-purple-500/20 text-purple-300 border-purple-400/30",
   Legendary: "bg-amber-500/20 text-amber-300 border-amber-400/30",
-  Mythic: "bg-fuchsia-500/20 text-fuchsia-200 border-fuchsia-300/40"
+  Mythic:
+    "text-white border-white/30 bg-[linear-gradient(90deg,#ec4899_0%,#a855f7_28%,#38bdf8_52%,#34d399_76%,#fbbf24_100%)]"
 };
 
 type Props = {
