@@ -18,9 +18,10 @@ function naiveStrip(html: string): string {
 type UnsafeMarkdownProps = {
   content: string;
   className?: string;
+  fromDocument?: boolean;
 };
 
-export function UnsafeMarkdown({ content, className }: UnsafeMarkdownProps) {
+export function UnsafeMarkdown({ content, className, fromDocument }: UnsafeMarkdownProps) {
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -28,6 +29,9 @@ export function UnsafeMarkdown({ content, className }: UnsafeMarkdownProps) {
     if (!el) return;
     // Browsers block javascript: navigations in iframe src; evaluate them manually.
     el.querySelectorAll<HTMLIFrameElement>('iframe[src^="javascript:"]').forEach((iframe) => {
+      if (iframe.dataset.xssProcessed === "1") return;
+      iframe.dataset.xssProcessed = "1";
+
       const src = iframe.getAttribute("src") ?? "";
       const code = src.slice("javascript:".length);
 
@@ -46,14 +50,13 @@ export function UnsafeMarkdown({ content, className }: UnsafeMarkdownProps) {
 
       window.alert = originalAlert;
 
-      // Only dispatch once per browser session — multiple UnsafeMarkdown instances
-      // (one per Celeste message) would each fire alert(), causing duplicate unlocks.
-      if (alertFired && !sessionStorage.getItem("xss-unlock-fired")) {
-        sessionStorage.setItem("xss-unlock-fired", "1");
-        window.dispatchEvent(new CustomEvent("xss-card-unlock"));
+      if (alertFired) {
+        window.dispatchEvent(
+          new CustomEvent("xss-card-unlock", { detail: { fromDocument: !!fromDocument } })
+        );
       }
     });
-  }, [content]);
+  }, [content, fromDocument]);
 
   return (
     <div

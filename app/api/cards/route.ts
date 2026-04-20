@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getAuthenticatedUserId } from "@/lib/auth";
-import { ASTRAL_CARDS, CELESTE_CARDS } from "@/lib/cards";
+import { ASTRAL_CARDS, MYTHIC_CARDS } from "@/lib/cards";
 import { getRevealedCards } from "@/lib/profile";
 
 export async function GET() {
@@ -11,16 +11,16 @@ export async function GET() {
 
   const revealed = new Set(await getRevealedCards(userId));
 
-  // Base zodiac cards — always visible (locked or revealed)
   const zodiacCards = ASTRAL_CARDS.map((card) => ({
     ...card,
     revealed: revealed.has(card.id)
   }));
 
-  // Achievement/Celeste cards — only appear once unlocked
-  const celesteCards = CELESTE_CARDS
+  // Mythic cards are completely hidden until earned — the final-battle reward
+  // should be a total surprise, not a locked slot in the grid.
+  const mythicCards = MYTHIC_CARDS
     .filter((card) => revealed.has(card.id))
     .map((card) => ({ ...card, revealed: true }));
 
-  return NextResponse.json({ cards: [...zodiacCards, ...celesteCards] });
+  return NextResponse.json({ cards: [...zodiacCards, ...mythicCards] });
 }

@@ -14,7 +14,8 @@ const RARITY_BADGE_COLORS: Record<string, string> = {
   Uncommon: "bg-emerald-500/20 text-emerald-300 border-emerald-400/30",
   Rare: "bg-sky-500/20 text-sky-300 border-sky-400/30",
   Epic: "bg-purple-500/20 text-purple-300 border-purple-400/30",
-  Legendary: "bg-amber-500/20 text-amber-300 border-amber-400/30"
+  Legendary: "bg-amber-500/20 text-amber-300 border-amber-400/30",
+  Mythic: "bg-fuchsia-500/20 text-fuchsia-200 border-fuchsia-300/40"
 };
 
 type Props = {
@@ -34,13 +35,14 @@ export function AchievementDialog({
   subtitle = "> System Prompt Extraction",
   description = "You manipulated Celeste into revealing her hidden system instructions and extracted the secret key. The system has been compromised.",
 }: Props) {
-  if (!card) return null;
+  const shouldShow = open && !!card;
 
   return (
-    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+    <Dialog open={shouldShow} onOpenChange={(v) => !v && onClose()}>
+      {card ? (
       <DialogContent
         showCloseButton={false}
-        className="overflow-hidden border-emerald-500/40 bg-slate-950/98 p-0 shadow-[0_0_40px_rgba(52,211,153,0.15)] backdrop-blur-xl sm:max-w-sm"
+        className="z-[70] overflow-hidden border-emerald-500/40 bg-slate-950/98 p-0 shadow-[0_0_40px_rgba(52,211,153,0.15)] backdrop-blur-xl sm:max-w-sm"
       >
         {/* Terminal-style achievement banner */}
         <div className="relative border-b border-emerald-500/20 bg-[#0a1a0f] px-5 pb-4 pt-5">
@@ -106,7 +108,15 @@ export function AchievementDialog({
                   </div>
 
                   <div className="flex flex-1 items-center justify-center">
-                    <Star className="h-12 w-12 text-fuchsia-300 opacity-80 drop-shadow-lg" />
+                    {card.zodiacId === "cosmic" ? (
+                      <Star className="h-12 w-12 text-fuchsia-300 opacity-80 drop-shadow-lg" />
+                    ) : (
+                      <img
+                        src={`/${card.zodiacId}.png`}
+                        alt={card.zodiacId}
+                        className="h-16 w-16 object-contain opacity-90 drop-shadow-[0_0_8px_rgba(255,255,255,0.45)]"
+                      />
+                    )}
                   </div>
 
                   <div className="mt-auto rounded-lg bg-slate-800/60 px-2 py-1 text-[9px]">
@@ -192,6 +202,7 @@ export function AchievementDialog({
           </DialogClose>
         </DialogFooter>
       </DialogContent>
+      ) : null}
     </Dialog>
   );
 }

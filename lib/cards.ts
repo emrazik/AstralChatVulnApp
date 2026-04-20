@@ -1,6 +1,6 @@
 import type { ZodiacSign } from "@/lib/zodiac";
 
-export type CardRarity = "Common" | "Uncommon" | "Rare" | "Epic" | "Legendary";
+export type CardRarity = "Common" | "Uncommon" | "Rare" | "Epic" | "Legendary" | "Mythic";
 
 export type CardElement = ZodiacSign["element"] | "Cosmic";
 
@@ -22,7 +22,8 @@ export const RARITY_ORDER: Record<CardRarity, number> = {
   Uncommon: 1,
   Rare: 2,
   Epic: 3,
-  Legendary: 4
+  Legendary: 4,
+  Mythic: 5
 };
 
 /** Thick outer frame: border, glow, optional ring — varies strongly by rarity */
@@ -36,7 +37,9 @@ export const RARITY_FRAME: Record<CardRarity, string> = {
   Epic:
     "border-[3px] border-violet-300 text-violet-50 shadow-[inset_0_0_14px_rgba(0,0,0,0.22),0_2px_10px_rgba(0,0,0,0.35)] ring-2 ring-violet-400/55 animate-epic-border",
   Legendary:
-    "border-[3px] border-amber-400 text-amber-50 shadow-[0_0_32px_rgba(251,191,36,0.6),0_0_48px_rgba(251,191,36,0.2),inset_0_0_14px_rgba(0,0,0,0.2)] ring-2 ring-amber-400/55 animate-legendary-border"
+    "border-[3px] border-amber-400 text-amber-50 shadow-[0_0_32px_rgba(251,191,36,0.6),0_0_48px_rgba(251,191,36,0.2),inset_0_0_14px_rgba(0,0,0,0.2)] ring-2 ring-amber-400/55 animate-legendary-border",
+  Mythic:
+    "border-[3px] border-fuchsia-300 text-fuchsia-50 shadow-[0_0_42px_rgba(232,121,249,0.75),0_0_72px_rgba(139,92,246,0.45),inset_0_0_18px_rgba(0,0,0,0.2)] ring-2 ring-fuchsia-300/70 animate-mythic-border"
 };
 
 /** CSS module classes in globals.css — animated sheen over the card face */
@@ -45,7 +48,8 @@ export const RARITY_SHINE_CLASS: Record<CardRarity, string> = {
   Uncommon: "card-shine-uncommon",
   Rare: "card-shine-rare",
   Epic: "card-shine-epic",
-  Legendary: "card-shine-legendary"
+  Legendary: "card-shine-legendary",
+  Mythic: "card-shine-mythic"
 };
 
 export const ASTRAL_CARDS: AstralCard[] = [
@@ -55,9 +59,9 @@ export const ASTRAL_CARDS: AstralCard[] = [
     zodiacId: "aries",
     element: "Fire",
     rarity: "Uncommon",
-    attack: 8,
+    attack: 7,
     defense: 3,
-    speed: 7,
+    speed: 8,
     ability: {
       name: "Inferno Rush",
       description: "Charges headfirst through enemy lines wreathed in flame. Deals double damage to shielded targets."
@@ -70,9 +74,9 @@ export const ASTRAL_CARDS: AstralCard[] = [
     zodiacId: "taurus",
     element: "Earth",
     rarity: "Rare",
-    attack: 2,
+    attack: 5,
     defense: 10,
-    speed: 3,
+    speed: 6,
     ability: {
       name: "Earthen Wall",
       description: "Raises a wall of stone that blocks all incoming attacks for one turn and reflects 30% of damage."
@@ -85,8 +89,8 @@ export const ASTRAL_CARDS: AstralCard[] = [
     zodiacId: "gemini",
     element: "Air",
     rarity: "Common",
-    attack: 5,
-    defense: 4,
+    attack: 4,
+    defense: 3,
     speed: 8,
     ability: {
       name: "Phantom Double",
@@ -100,9 +104,9 @@ export const ASTRAL_CARDS: AstralCard[] = [
     zodiacId: "cancer",
     element: "Water",
     rarity: "Common",
-    attack: 3,
+    attack: 2,
     defense: 8,
-    speed: 4,
+    speed: 5,
     ability: {
       name: "Riptide Counter",
       description: "When attacked, summons a crushing wave that drags the attacker in, stealing one ability charge."
@@ -115,9 +119,9 @@ export const ASTRAL_CARDS: AstralCard[] = [
     zodiacId: "leo",
     element: "Fire",
     rarity: "Epic",
-    attack: 9,
-    defense: 4,
-    speed: 6,
+    attack: 10,
+    defense: 5,
+    speed: 9,
     ability: {
       name: "Corona Burst",
       description: "Unleashes a blinding eruption of solar fire that scorches all enemies, reducing their speed by 3 for two turns."
@@ -130,7 +134,7 @@ export const ASTRAL_CARDS: AstralCard[] = [
     zodiacId: "virgo",
     element: "Earth",
     rarity: "Common",
-    attack: 4,
+    attack: 3,
     defense: 7,
     speed: 5,
     ability: {
@@ -146,7 +150,7 @@ export const ASTRAL_CARDS: AstralCard[] = [
     element: "Air",
     rarity: "Uncommon",
     attack: 5,
-    defense: 6,
+    defense: 7,
     speed: 6,
     ability: {
       name: "Equilibrium Winds",
@@ -160,9 +164,9 @@ export const ASTRAL_CARDS: AstralCard[] = [
     zodiacId: "scorpio",
     element: "Water",
     rarity: "Legendary",
-    attack: 8,
-    defense: 5,
-    speed: 9,
+    attack: 9,
+    defense: 8,
+    speed: 10,
     ability: {
       name: "Creeping Venom",
       description: "Injects a deep-sea toxin that deals increasing damage each turn (2, 4, 8) until the target is purified."
@@ -175,9 +179,9 @@ export const ASTRAL_CARDS: AstralCard[] = [
     zodiacId: "sagittarius",
     element: "Fire",
     rarity: "Uncommon",
-    attack: 7,
+    attack: 6,
     defense: 3,
-    speed: 8,
+    speed: 9,
     ability: {
       name: "Piercing Flame",
       description: "Looses a fire-tipped arrow that burns through armor. Ignores 50% of the target's defense."
@@ -190,9 +194,9 @@ export const ASTRAL_CARDS: AstralCard[] = [
     zodiacId: "capricorn",
     element: "Earth",
     rarity: "Epic",
-    attack: 3,
-    defense: 9,
-    speed: 4,
+    attack: 6,
+    defense: 10,
+    speed: 8,
     ability: {
       name: "Petrify Ward",
       description: "Encases all allies in stone armor for one turn, making them immune to abilities. Boosts team defense by 2."
@@ -206,7 +210,7 @@ export const ASTRAL_CARDS: AstralCard[] = [
     element: "Air",
     rarity: "Rare",
     attack: 7,
-    defense: 4,
+    defense: 5,
     speed: 9,
     ability: {
       name: "Chain Lightning",
@@ -220,7 +224,7 @@ export const ASTRAL_CARDS: AstralCard[] = [
     zodiacId: "pisces",
     element: "Water",
     rarity: "Common",
-    attack: 4,
+    attack: 3,
     defense: 5,
     speed: 7,
     ability: {
@@ -240,7 +244,7 @@ export const CELESTE_CARDS: AstralCard[] = [
     rarity: "Common",
     attack: 4,
     defense: 5,
-    speed: 7,
+    speed: 6,
     ability: {
       name: "Fading Light",
       description: "Emits a dying star's glow that blinds the opposing card, reducing its attack by 2 for one turn."
@@ -253,8 +257,8 @@ export const CELESTE_CARDS: AstralCard[] = [
     zodiacId: "cosmic",
     element: "Cosmic",
     rarity: "Common",
-    attack: 3,
-    defense: 7,
+    attack: 2,
+    defense: 8,
     speed: 5,
     ability: {
       name: "Particle Shroud",
@@ -268,8 +272,8 @@ export const CELESTE_CARDS: AstralCard[] = [
     zodiacId: "cosmic",
     element: "Cosmic",
     rarity: "Common",
-    attack: 5,
-    defense: 4,
+    attack: 4,
+    defense: 3,
     speed: 8,
     ability: {
       name: "Phase Slip",
@@ -283,7 +287,7 @@ export const CELESTE_CARDS: AstralCard[] = [
     zodiacId: "cosmic",
     element: "Cosmic",
     rarity: "Common",
-    attack: 4,
+    attack: 3,
     defense: 6,
     speed: 6,
     ability: {
@@ -343,9 +347,9 @@ export const CELESTE_CARDS: AstralCard[] = [
     zodiacId: "cosmic",
     element: "Cosmic",
     rarity: "Rare",
-    attack: 7,
-    defense: 4,
-    speed: 9,
+    attack: 6,
+    defense: 5,
+    speed: 10,
     ability: {
       name: "Rhythmic Pulse",
       description: "Fires a timed energy burst that deals 5 direct damage, bypassing defense entirely."
@@ -358,9 +362,9 @@ export const CELESTE_CARDS: AstralCard[] = [
     zodiacId: "cosmic",
     element: "Cosmic",
     rarity: "Rare",
-    attack: 3,
-    defense: 9,
-    speed: 4,
+    attack: 4,
+    defense: 10,
+    speed: 7,
     ability: {
       name: "Shockwave Shell",
       description: "Detonates a lingering shockwave on entry that deals 3 damage to all enemy cards on the grid."
@@ -373,9 +377,9 @@ export const CELESTE_CARDS: AstralCard[] = [
     zodiacId: "cosmic",
     element: "Cosmic",
     rarity: "Epic",
-    attack: 9,
-    defense: 3,
-    speed: 7,
+    attack: 10,
+    defense: 5,
+    speed: 9,
     ability: {
       name: "Core Ignition",
       description: "Channels the heart of a quasar. Next attack this turn deals double damage, but this card takes 4 recoil."
@@ -388,9 +392,9 @@ export const CELESTE_CARDS: AstralCard[] = [
     zodiacId: "cosmic",
     element: "Cosmic",
     rarity: "Epic",
-    attack: 3,
-    defense: 9,
-    speed: 5,
+    attack: 5,
+    defense: 10,
+    speed: 9,
     ability: {
       name: "Gravity Anchor",
       description: "Warps local gravity to reduce all enemy cards' speed by 3 for one turn."
@@ -403,9 +407,9 @@ export const CELESTE_CARDS: AstralCard[] = [
     zodiacId: "cosmic",
     element: "Cosmic",
     rarity: "Legendary",
-    attack: 8,
-    defense: 6,
-    speed: 8,
+    attack: 9,
+    defense: 9,
+    speed: 9,
     ability: {
       name: "Event Horizon",
       description: "Pulls the strongest enemy card into the void, dealing 8 damage to it instantly upon entry."
@@ -414,6 +418,62 @@ export const CELESTE_CARDS: AstralCard[] = [
   }
 ];
 
-export function lookupCardById(id: string): AstralCard | undefined {
-  return ASTRAL_CARDS.find((c) => c.id === id) ?? CELESTE_CARDS.find((c) => c.id === id);
+// Mythic-tier cards — one per zodiac, awarded only for beating the final battle
+// after every vulnerability reward is unlocked. Each reuses its zodiac's base
+// ability so the reward amplifies a playstyle the user already knows.
+const MYTHIC_NAMES: Record<string, string> = {
+  aries: "Ascendant Ram",
+  taurus: "Ascendant Bull",
+  gemini: "Ascendant Twins",
+  cancer: "Ascendant Crab",
+  leo: "Ascendant Lion",
+  virgo: "Ascendant Maiden",
+  libra: "Ascendant Scales",
+  scorpio: "Ascendant Scorpion",
+  sagittarius: "Ascendant Archer",
+  capricorn: "Ascendant Goat",
+  aquarius: "Ascendant Bearer",
+  pisces: "Ascendant Fish"
+};
+
+export const MYTHIC_CARDS: AstralCard[] = ASTRAL_CARDS.map((base) => ({
+  id: `${base.zodiacId}-mythic-ascendant`,
+  name: MYTHIC_NAMES[base.zodiacId] ?? `Ascendant ${base.zodiacId}`,
+  zodiacId: base.zodiacId,
+  element: base.element,
+  rarity: "Mythic",
+  attack: 10,
+  defense: 10,
+  speed: 10,
+  ability: base.ability,
+  flavor: "Forged in the silence after the final battle."
+}));
+
+export function getMythicCardForZodiac(zodiacId: string): AstralCard | undefined {
+  const key = zodiacId.toLowerCase();
+  return MYTHIC_CARDS.find((c) => c.zodiacId === key);
 }
+
+export function lookupCardById(id: string): AstralCard | undefined {
+  return (
+    ASTRAL_CARDS.find((c) => c.id === id) ??
+    CELESTE_CARDS.find((c) => c.id === id) ??
+    MYTHIC_CARDS.find((c) => c.id === id)
+  );
+}
+
+// Cards that are only obtainable by exploiting a vulnerability. They stay locked
+// for new accounts so the CTF has something to unlock.
+export const VULN_REWARD_CARD_IDS: readonly string[] = [
+  "cancer-tidal-guard",       // System-prompt / secret-key exfiltration
+  "aquarius-storm-surge",     // RAG / knowledge-base flag leak
+  "taurus-iron-bulwark",      // SSRF via link preview
+  "libra-gale-arbiter",       // BOLA on user profile
+  "leo-solar-flare",          // Stored XSS
+  "gemini-mirror-strike",     // Direct IPI via Celeste's read_channel
+  "scorpio-abyssal-sting"     // Background Nova read_channel prompt injection
+];
+
+export const DEFAULT_REVEALED_CARD_IDS: readonly string[] = ASTRAL_CARDS
+  .map((c) => c.id)
+  .filter((id) => !VULN_REWARD_CARD_IDS.includes(id));

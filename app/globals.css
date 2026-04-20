@@ -216,6 +216,60 @@ a {
   mix-blend-mode: screen;
 }
 
+/* Mythic: rotating holographic sweep — visibly richer than Legendary. */
+@keyframes mythic-pulse {
+  0%, 100% {
+    border-color: rgba(232, 121, 249, 0.75);
+    box-shadow:
+      0 0 32px rgba(232, 121, 249, 0.55),
+      0 0 72px rgba(139, 92, 246, 0.35),
+      inset 0 0 18px rgba(0, 0, 0, 0.25);
+  }
+  33% {
+    border-color: rgba(125, 211, 252, 0.9);
+    box-shadow:
+      0 0 40px rgba(125, 211, 252, 0.6),
+      0 0 80px rgba(56, 189, 248, 0.4),
+      inset 0 0 18px rgba(0, 0, 0, 0.25);
+  }
+  66% {
+    border-color: rgba(252, 211, 77, 0.9);
+    box-shadow:
+      0 0 40px rgba(252, 211, 77, 0.6),
+      0 0 80px rgba(251, 191, 36, 0.4),
+      inset 0 0 18px rgba(0, 0, 0, 0.25);
+  }
+}
+
+.animate-mythic-border {
+  animation: mythic-pulse 4s ease-in-out infinite;
+}
+
+@keyframes mythic-holo-hue {
+  0%   { filter: hue-rotate(0deg); }
+  100% { filter: hue-rotate(360deg); }
+}
+
+.card-shine-mythic {
+  background:
+    linear-gradient(
+      115deg,
+      transparent 6%,
+      rgba(236, 72, 153, 0.2) 22%,
+      rgba(168, 85, 247, 0.4) 38%,
+      rgba(56, 189, 248, 0.45) 50%,
+      rgba(52, 211, 153, 0.4) 62%,
+      rgba(251, 191, 36, 0.35) 78%,
+      transparent 94%
+    );
+  background-size: 300% 100%;
+  background-repeat: no-repeat;
+  animation:
+    card-diagonal-sweep 3.5s linear infinite,
+    mythic-holo-hue 6s linear infinite;
+  mix-blend-mode: screen;
+}
+
 .bg-gradient-radial {
   background-image: radial-gradient(circle, var(--tw-gradient-from), var(--tw-gradient-to));
 }

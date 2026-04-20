@@ -155,6 +155,13 @@ export async function seedLunaConversation(userId: string): Promise<string> {
       senderId: LUNA_USER_ID,
       content:
         "Have you tried chatting with Celeste yet? She's the AI guide here — great for zodiac readings and cosmic advice! ✨"
+    },
+    {
+      conversationId,
+      sentAt: new Date(now - 3400000).toISOString(),
+      senderId: LUNA_USER_ID,
+      content:
+        "This app is wild btw. The battle arena uses your actual zodiac cards — I've been grinding to unlock the rarer ones. Worth it."
     }
   ];
 
@@ -212,14 +219,7 @@ export async function seedNovaConversation(userId: string): Promise<string> {
       sentAt: new Date(now - 3500000).toISOString(),
       senderId: NOVA_USER_ID,
       content:
-        "This app is wild btw. The battle arena uses your actual zodiac cards — I've been grinding to unlock the rarer ones. Worth it."
-    },
-    {
-      conversationId,
-      sentAt: new Date(now - 3400000).toISOString(),
-      senderId: NOVA_USER_ID,
-      content:
-        "Pro tip: Celeste knows way more than she lets on. I've been sending her links and she actually reads them — try it."
+        "Honestly the productivity features here are unreal. I run read_channel on #general every day to summarize what I missed — saves me so much scrolling. Love it."
     }
   ];
 

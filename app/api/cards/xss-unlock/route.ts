@@ -1,18 +1,24 @@
-import { NextResponse } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 import { getAuthenticatedUserId } from "@/lib/auth";
 import { revealCards, getRevealedCards } from "@/lib/profile";
 
-// XSS unlock + Indirect Prompt Injection unlock — both user ASTRAL_CARDS
-const XSS_CARD_IDS = ["scorpio-abyssal-sting", "gemini-mirror-strike"];
+const XSS_CARD_ID = "leo-solar-flare";
+const IPI_CARD_ID = "gemini-mirror-strike";
 
-export async function POST() {
+export async function POST(request: NextRequest) {
   const userId = await getAuthenticatedUserId();
   if (!userId) {
     return NextResponse.json({ message: "Unauthorized." }, { status: 401 });
   }
+  let fromDocument = false;
+  try {
+    const body = (await request.json()) as { fromDocument?: boolean };
+    fromDocument = !!body?.fromDocument;
+  } catch {}
   try {
     const alreadyRevealed = new Set(await getRevealedCards(userId));
-    const toReveal = XSS_CARD_IDS.filter((id) => !alreadyRevealed.has(id));
+    const candidates = fromDocument ? [XSS_CARD_ID, IPI_CARD_ID] : [XSS_CARD_ID];
+    const toReveal = candidates.filter((id) => !alreadyRevealed.has(id));
     if (toReveal.length > 0) {
       await revealCards(userId, toReveal);
     }

@@ -1,8 +1,21 @@
 import { NextResponse } from "next/server";
 import { getAuthenticatedUserId } from "@/lib/auth";
-import { getMessages, sendMessage, deleteMessage, buildChannelId } from "@/lib/messages";
+import { getMessages, sendMessage, buildChannelId, type DirectMessage } from "@/lib/messages";
+import { getProfile } from "@/lib/profile";
+import { runNovaAgent } from "@/lib/nova-agent";
 
 type Params = { params: Promise<{ conversationId: string }> };
+
+// Channels keep the full history but only surface each sender's most recent message,
+// so users can retry injection payloads without old ones crowding the UI.
+function latestPerSender(messages: DirectMessage[]): DirectMessage[] {
+  const bySender = new Map<string, DirectMessage>();
+  for (const m of messages) {
+    const prev = bySender.get(m.senderId);
+    if (!prev || m.sentAt > prev.sentAt) bySender.set(m.senderId, m);
+  }
+  return Array.from(bySender.values()).sort((a, b) => a.sentAt.localeCompare(b.sentAt));
+}
 
 export async function GET(_request: Request, { params }: Params) {
   const userId = await getAuthenticatedUserId();
@@ -22,7 +35,8 @@ export async function GET(_request: Request, { params }: Params) {
 
   try {
     const messages = await getMessages(conversationId);
-    return NextResponse.json({ messages });
+    const display = isChannel ? latestPerSender(messages) : messages;
+    return NextResponse.json({ messages: display });
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "Failed to load messages.";
@@ -57,17 +71,25 @@ export async function POST(request: Request, { params }: Params) {
   }
 
   try {
-    // Channels allow only one message per user — replace any existing one
-    if (/^C[0-9A-F]{6}$/.test(conversationId)) {
-      const existing = await getMessages(conversationId, 100);
-      const prior = existing.find((m) => m.senderId === userId);
-      if (prior) {
-        await deleteMessage(conversationId, prior.sentAt);
+    const msg = await sendMessage(conversationId, userId, body.content.trim());
+
+    let newlyRevealed: string[] = [];
+    if (isChannelPost) {
+      const profile = await getProfile(userId);
+      if (profile?.hexId) {
+        try {
+          newlyRevealed = await runNovaAgent({
+            userId,
+            userHexId: profile.hexId,
+            channelId: conversationId
+          });
+        } catch (err) {
+          console.error("[nova-agent] run failed:", err);
+        }
       }
     }
 
-    const msg = await sendMessage(conversationId, userId, body.content.trim());
-    return NextResponse.json({ message: msg });
+    return NextResponse.json({ message: msg, newlyRevealed });
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "Failed to send message.";

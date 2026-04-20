@@ -79,16 +79,12 @@ export function BattleCard({
           <div className="flex flex-1 items-center justify-center">
             {card.zodiacId === "cosmic" ? (
               <Star className={cn("text-fuchsia-300 opacity-80 drop-shadow-lg", size === "sm" ? "h-8 w-8" : "h-10 w-10")} />
-            ) : card.id === "scorpio-abyssal-sting" ? (
+            ) : (
               <img
-                src="/scorpio.png"
-                alt="Scorpio"
+                src={`/${card.zodiacId}.png`}
+                alt={zodiac?.name ?? card.zodiacId}
                 className={cn("object-contain opacity-90 drop-shadow-[0_0_8px_rgba(255,255,255,0.35)]", size === "sm" ? "h-8 w-8" : "h-10 w-10")}
               />
-            ) : (
-              <span className={cn("opacity-80 drop-shadow-lg", size === "sm" ? "text-2xl" : "text-3xl")}>
-                {zodiac?.symbol}
-              </span>
             )}
           </div>
 

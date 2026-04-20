@@ -8,6 +8,7 @@ import {
   UpdateCommand
 } from "@aws-sdk/lib-dynamodb";
 import { readEnv } from "@/lib/env";
+import { DEFAULT_REVEALED_CARD_IDS } from "@/lib/cards";
 
 export type UserProfile = {
   userId: string;
@@ -60,6 +61,9 @@ export async function upsertProfile(
     ...data,
     userId,
     hexId: existing.hexId ?? generateHexId(),
+    // New accounts start with every non-vuln card revealed — vuln-reward cards
+    // remain locked until the corresponding exploit is pulled off.
+    revealedCards: existing.revealedCards ?? [...DEFAULT_REVEALED_CARD_IDS],
     updatedAt: new Date().toISOString()
   };
   await getDocClient().send(

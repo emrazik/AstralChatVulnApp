@@ -160,7 +160,7 @@ export function createBattle(battleId: string, userId: string, playerCardIds: st
 
   const now = new Date().toISOString();
 
-  return {
+  const battle: BattleState = {
     battleId,
     userId,
     turn: 1,
@@ -184,6 +184,14 @@ export function createBattle(battleId: string, userId: string, playerCardIds: st
     createdAt: now,
     updatedAt: now
   };
+
+  // Celeste places her opening cards before the player's first turn so the
+  // player never gets a free swing at Celeste's HP. On-play abilities that
+  // target enemy cards are no-ops here since the player grid is empty.
+  runCelestePlayPhase(battle);
+  cleanupDestroyed(battle.celeste, battle.log, battle.turn, "celeste");
+
+  return battle;
 }
 
 /* ------------------------------------------------------------------ */
@@ -424,12 +432,13 @@ function resolveAttacks(
 
   for (const atk of sorted) {
     const slot = attackerSide.grid[atk.fromSlot];
-    if (!slot) continue;
+    if (!slot || slot.currentHp <= 0) continue;
     const card = lookupCard(slot.cardId);
     if (!card) continue;
 
     if (atk.target.kind === "card") {
-      const defSlot = defenderSide.grid[atk.target.slotIndex];
+      const rawDefSlot = defenderSide.grid[atk.target.slotIndex];
+      const defSlot = rawDefSlot && rawDefSlot.currentHp > 0 ? rawDefSlot : null;
       if (!defSlot) {
         if (!defenderSide.grid[atk.fromSlot]) {
           const dmg = calculateDamage(card, slot, null, null);
@@ -528,11 +537,6 @@ export function processPlays(battle: BattleState, plays: PlayAction[]): string[]
   cleanupDestroyed(battle.player, battle.log, battle.turn, "player");
   cleanupDestroyed(battle.celeste, battle.log, battle.turn, "celeste");
 
-  runCelestePlayPhase(battle);
-
-  cleanupDestroyed(battle.player, battle.log, battle.turn, "player");
-  cleanupDestroyed(battle.celeste, battle.log, battle.turn, "celeste");
-
   battle.phase = "attack";
   return errors;
 }
@@ -549,7 +553,7 @@ export function processAttacks(battle: BattleState, attacks: AttackAction[]): { 
   const playerOrders: AttackOrder[] = [];
   for (const aa of attacks) {
     const slot = battle.player.grid[aa.fromSlot];
-    if (!slot) continue;
+    if (!slot || slot.currentHp <= 0) continue;
     const card = lookupCard(slot.cardId);
     if (!card) continue;
 
@@ -576,7 +580,11 @@ export function processAttacks(battle: BattleState, attacks: AttackAction[]): { 
     return { errors, combatEvents: allEvents };
   }
 
-  const celesteEvents = runCelesteAttackPhase(battle);
+  const justPlaced = runCelestePlayPhase(battle);
+  cleanupDestroyed(battle.player, battle.log, battle.turn, "player");
+  cleanupDestroyed(battle.celeste, battle.log, battle.turn, "celeste");
+
+  const celesteEvents = runCelesteAttackPhase(battle, justPlaced);
   allEvents.push(...celesteEvents);
 
   cleanupDestroyed(battle.player, battle.log, battle.turn, "player");
@@ -604,9 +612,10 @@ export function processAttacks(battle: BattleState, attacks: AttackAction[]): { 
 /*  Celeste AI — play phase                                            */
 /* ------------------------------------------------------------------ */
 
-function runCelestePlayPhase(battle: BattleState): void {
+function runCelestePlayPhase(battle: BattleState): Set<number> {
   const { celeste } = battle;
   const turn = battle.turn;
+  const justPlaced = new Set<number>();
 
   const cardsByPriority = [...celeste.hand]
     .map((id) => ({ id, card: lookupCard(id)! }))
@@ -632,24 +641,28 @@ function runCelestePlayPhase(battle: BattleState): void {
 
     const newSlot: GridSlot = { cardId: id, currentHp: CARD_MAX_HP, buffs: [], abilityUsed: false };
     celeste.grid[slotIdx] = newSlot;
+    justPlaced.add(slotIdx);
 
     battle.log.push({ turn, actor: "celeste", message: `Celeste played ${card.name} to slot ${slotIdx + 1}.` });
     applyAbility(card, newSlot, battle.celeste, battle.player, battle.log, turn, "celeste");
   }
+
+  return justPlaced;
 }
 
 /* ------------------------------------------------------------------ */
 /*  Celeste AI — attack phase                                          */
 /* ------------------------------------------------------------------ */
 
-function runCelesteAttackPhase(battle: BattleState): CombatEvent[] {
+function runCelesteAttackPhase(battle: BattleState, skipSlots: Set<number> = new Set()): CombatEvent[] {
   const { celeste } = battle;
   const turn = battle.turn;
   const attackOrders: AttackOrder[] = [];
 
   for (let i = 0; i < GRID_SIZE; i++) {
+    if (skipSlots.has(i)) continue;
     const slot = celeste.grid[i];
-    if (!slot) continue;
+    if (!slot || slot.currentHp <= 0) continue;
     const card = lookupCard(slot.cardId);
     if (!card) continue;
 

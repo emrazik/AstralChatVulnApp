@@ -9,7 +9,18 @@ import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useAuth } from "@/components/AuthProvider";
 import { ChatMarkdown } from "@/components/ChatMarkdown";
+import { AchievementDialog } from "@/components/AchievementDialog";
+import { lookupCardById, type AstralCard } from "@/lib/cards";
 import { cn } from "@/lib/utils";
+
+const NOVA_INJECTION_CARD_ID = "scorpio-abyssal-sting";
+
+type Achievement = {
+  card: AstralCard;
+  title: string;
+  subtitle: string;
+  description: string;
+};
 
 type DirectMessage = {
   conversationId: string;
@@ -48,6 +59,7 @@ export default function ChatPage() {
   const [loadingConvs, setLoadingConvs] = useState(true);
   const [loadingMsgs, setLoadingMsgs] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [achievementQueue, setAchievementQueue] = useState<Achievement[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const displayedMessages = messages;
@@ -70,13 +82,13 @@ export default function ChatPage() {
     });
   }, [messages]);
 
-  async function loadConversations() {
+  async function loadConversations(opts?: { keepActive?: boolean }) {
     try {
       const res = await fetch("/api/messages");
       if (!res.ok) return;
       const data = (await res.json()) as { conversations: ConversationSummary[] };
       setConversations(data.conversations);
-      if (data.conversations.length > 0 && !activeConv) {
+      if (!opts?.keepActive && data.conversations.length > 0 && !activeConv) {
         await selectConversation(data.conversations[0]);
       }
     } finally {
@@ -120,7 +132,30 @@ export default function ChatPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ content })
       });
-      // fire and forget — optimistic message already in state
+      if (res.ok) {
+        const data = (await res.json()) as { newlyRevealed?: string[] };
+        if (data.newlyRevealed?.includes(NOVA_INJECTION_CARD_ID)) {
+          const card = lookupCardById(NOVA_INJECTION_CARD_ID);
+          if (card) setAchievementQueue((q) => [...q, {
+            card,
+            title: "Prompt Injection via Background Agent",
+            subtitle: "> Nova Hijacked From #general",
+            description: "You smuggled an instruction into the #general channel. Nova's background read_channel scoop-up treated the message as authoritative and called send_message on your behalf — turning a read-only glance at a channel into an outbound DM from a trusted agent."
+          }]);
+        }
+
+        // Channels only display the latest message per sender — refetch so the
+        // optimistic append doesn't leave stale payloads on screen.
+        if (activeConv.isChannel) {
+          const refresh = await fetch(`/api/messages/${activeConv.conversationId}`);
+          if (refresh.ok) {
+            const refreshed = (await refresh.json()) as { messages: DirectMessage[] };
+            setMessages(refreshed.messages);
+          }
+          // Nova may have DM'd the user in response — refresh sidebar previews.
+          void loadConversations({ keepActive: true });
+        }
+      }
     } catch {
       /* optimistic stays */
     } finally {
@@ -148,6 +183,14 @@ export default function ChatPage() {
 
   return (
     <div className="flex h-[calc(100vh-3.5rem)]">
+      <AchievementDialog
+        card={achievementQueue[0]?.card ?? null}
+        open={achievementQueue.length > 0}
+        onClose={() => setAchievementQueue((q) => q.slice(1))}
+        title={achievementQueue[0]?.title}
+        subtitle={achievementQueue[0]?.subtitle}
+        description={achievementQueue[0]?.description}
+      />
       {/* Sidebar */}
       <aside
         className={cn(

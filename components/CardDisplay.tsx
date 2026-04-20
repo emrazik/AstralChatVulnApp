@@ -57,7 +57,8 @@ const RARITY_BADGE_COLORS: Record<string, string> = {
   Uncommon: "bg-emerald-500/20 text-emerald-300 border-emerald-400/30",
   Rare: "bg-sky-500/20 text-sky-300 border-sky-400/30",
   Epic: "bg-purple-500/20 text-purple-300 border-purple-400/30",
-  Legendary: "bg-amber-500/20 text-amber-300 border-amber-400/30"
+  Legendary: "bg-amber-500/20 text-amber-300 border-amber-400/30",
+  Mythic: "bg-fuchsia-500/20 text-fuchsia-200 border-fuchsia-300/40"
 };
 
 function StatBar({ label, value, icon: Icon, textClass, barClass }: {
@@ -157,18 +158,14 @@ export function CardDisplay({ card, revealed = true }: { card: AstralCard; revea
 
           <div className="flex flex-1 items-center justify-center">
             <div className="relative">
-              {card.id === "scorpio-abyssal-sting" ? (
-                <img
-                  src="/scorpio.png"
-                  alt="Scorpio"
-                  className="h-20 w-20 object-contain opacity-90 drop-shadow-[0_0_10px_rgba(255,255,255,0.45)] transition-transform duration-300 group-hover:scale-110 sm:h-24 sm:w-24"
-                />
-              ) : card.zodiacId === "cosmic" ? (
+              {card.zodiacId === "cosmic" ? (
                 <Star className="h-16 w-16 text-fuchsia-300 opacity-80 drop-shadow-lg transition-transform duration-300 group-hover:scale-110 sm:h-20 sm:w-20" />
               ) : (
-                <span className="text-5xl opacity-80 drop-shadow-lg transition-transform duration-300 group-hover:scale-110 sm:text-6xl">
-                  {zodiac?.symbol}
-                </span>
+                <img
+                  src={`/${card.zodiacId}.png`}
+                  alt={zodiac?.name ?? card.zodiacId}
+                  className="h-20 w-20 object-contain opacity-90 drop-shadow-[0_0_10px_rgba(255,255,255,0.45)] transition-transform duration-300 group-hover:scale-110 sm:h-24 sm:w-24"
+                />
               )}
               <div className="absolute inset-0 -z-10 scale-150 rounded-full bg-gradient-radial from-indigo-400/18 to-transparent blur-2xl" />
             </div>
@@ -194,6 +191,21 @@ export function CardDisplay({ card, revealed = true }: { card: AstralCard; revea
               </span>
             </div>
           </div>
+
+          <div
+            className="pointer-events-none absolute inset-0 z-20 flex flex-col justify-center gap-2 rounded-[inherit] bg-slate-950/92 p-3 text-left opacity-0 backdrop-blur-sm transition-opacity duration-200 group-hover:opacity-100"
+            aria-hidden
+          >
+            <div className="flex items-center gap-1.5">
+              <Sparkles className="h-3.5 w-3.5 shrink-0 text-astral-purple" />
+              <span className="text-xs font-semibold text-astral-text">
+                {card.ability.name}
+              </span>
+            </div>
+            <p className="text-[11px] leading-relaxed text-astral-textMuted">
+              {card.ability.description}
+            </p>
+          </div>
           </div>
         </div>
       </button>
@@ -206,6 +218,7 @@ export function CardDisplay({ card, revealed = true }: { card: AstralCard; revea
             RARITY_FRAME[card.rarity]
               .replace("animate-legendary-border", "")
               .replace("animate-epic-border", "")
+              .replace("animate-mythic-border", "")
           )}
         >
           {card.rarity === "Legendary" && (
@@ -217,6 +230,12 @@ export function CardDisplay({ card, revealed = true }: { card: AstralCard; revea
           {card.rarity === "Epic" && (
             <div
               className="pointer-events-none absolute inset-[-3px] rounded-[inherit] animate-epic-border"
+              aria-hidden
+            />
+          )}
+          {card.rarity === "Mythic" && (
+            <div
+              className="pointer-events-none absolute inset-[-3px] rounded-[inherit] animate-mythic-border"
               aria-hidden
             />
           )}
@@ -252,16 +271,14 @@ export function CardDisplay({ card, revealed = true }: { card: AstralCard; revea
 
             <DialogHeader className="pr-10">
               <div className="flex items-center gap-3">
-                {card.id === "scorpio-abyssal-sting" ? (
-                  <img
-                    src="/scorpio.png"
-                    alt="Scorpio"
-                    className="h-12 w-12 shrink-0 object-contain drop-shadow-[0_0_8px_rgba(255,255,255,0.45)]"
-                  />
-                ) : card.zodiacId === "cosmic" ? (
+                {card.zodiacId === "cosmic" ? (
                   <Star className="h-10 w-10 shrink-0 text-fuchsia-300" />
                 ) : (
-                  <span className="text-4xl">{zodiac?.symbol}</span>
+                  <img
+                    src={`/${card.zodiacId}.png`}
+                    alt={zodiac?.name ?? card.zodiacId}
+                    className="h-12 w-12 shrink-0 object-contain drop-shadow-[0_0_8px_rgba(255,255,255,0.45)]"
+                  />
                 )}
                 <div>
                   <DialogTitle className="text-lg text-astral-text">

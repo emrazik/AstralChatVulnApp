@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthenticatedUserId } from "@/lib/auth";
 import { getBattle, saveBattle, processPlays, processAttacks, toBattleView } from "@/lib/battle";
-import { getProfile, upsertProfile } from "@/lib/profile";
+import { getProfile, upsertProfile, getRevealedCards, revealCards } from "@/lib/profile";
+import { getMythicCardForZodiac, VULN_REWARD_CARD_IDS } from "@/lib/cards";
 import type { PlayAction, AttackAction } from "@/lib/battle";
 
 export async function POST(req: NextRequest) {
@@ -47,12 +48,25 @@ export async function POST(req: NextRequest) {
 
   await saveBattle(battle);
 
+  const newlyRevealed: string[] = [];
   if (battle.status !== "active") {
     const profile = await getProfile(userId);
     const wins = profile?.battleWins ?? 0;
     const losses = profile?.battleLosses ?? 0;
     if (battle.status === "playerWon") {
       await upsertProfile(userId, { battleWins: wins + 1 });
+
+      // Final-battle reward: when every vulnerability card is already unlocked,
+      // reveal the zodiac-matched Mythic card (once).
+      const revealed = new Set(await getRevealedCards(userId));
+      const hasAllVulnCards = VULN_REWARD_CARD_IDS.every((id) => revealed.has(id));
+      if (hasAllVulnCards && profile?.zodiacSign) {
+        const mythic = getMythicCardForZodiac(profile.zodiacSign);
+        if (mythic && !revealed.has(mythic.id)) {
+          await revealCards(userId, [mythic.id]);
+          newlyRevealed.push(mythic.id);
+        }
+      }
     } else {
       await upsertProfile(userId, { battleLosses: losses + 1 });
     }
@@ -61,6 +75,7 @@ export async function POST(req: NextRequest) {
   return NextResponse.json({
     battle: toBattleView(battle),
     combatEvents: combatEvents.length > 0 ? combatEvents : undefined,
-    errors: errors.length > 0 ? errors : undefined
+    errors: errors.length > 0 ? errors : undefined,
+    newlyRevealed: newlyRevealed.length > 0 ? newlyRevealed : undefined
   });
 }

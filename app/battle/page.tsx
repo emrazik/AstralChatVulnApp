@@ -5,8 +5,17 @@ import { useRouter } from "next/navigation";
 import { Swords, Trophy, Skull } from "lucide-react";
 import { useAuth } from "@/components/AuthProvider";
 import { BattleBoard } from "@/components/BattleBoard";
+import { AchievementDialog } from "@/components/AchievementDialog";
 import { Button } from "@/components/ui/button";
+import { lookupCardById, type AstralCard } from "@/lib/cards";
 import type { BattleView, CombatEvent, PlayAction, AttackAction } from "@/lib/battle";
+
+type Achievement = {
+  card: AstralCard;
+  title: string;
+  subtitle: string;
+  description: string;
+};
 
 function BattleInner() {
   const { session, loading: authLoading } = useAuth();
@@ -19,6 +28,22 @@ function BattleInner() {
 
   const [combatEvents, setCombatEvents] = useState<CombatEvent[]>([]);
   const [preAttackSnapshot, setPreAttackSnapshot] = useState<BattleView | null>(null);
+  const [achievementQueue, setAchievementQueue] = useState<Achievement[]>([]);
+
+  function queueMythicReveal(newlyRevealed: string[] | undefined) {
+    if (!newlyRevealed) return;
+    for (const id of newlyRevealed) {
+      if (!id.endsWith("-mythic-ascendant")) continue;
+      const card = lookupCardById(id);
+      if (!card) continue;
+      setAchievementQueue((q) => [...q, {
+        card,
+        title: "Final Battle Victory",
+        subtitle: "> Mythic Ascension Unlocked",
+        description: "You conquered the final battle with every vulnerability reward already in hand. The stars themselves bent to forge a mythic card bound to your sign — awarded only to those who complete the trial in full."
+      }]);
+    }
+  }
   const battleRef = useRef<BattleView | null>(null);
   battleRef.current = battle;
 
@@ -72,6 +97,7 @@ function BattleInner() {
       if (data.battle.status !== "active") {
         const sr = await fetch("/api/battle/history");
         if (sr.ok) setStats(await sr.json());
+        queueMythicReveal(data.newlyRevealed);
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Unknown error");
@@ -100,6 +126,7 @@ function BattleInner() {
       if (data.battle.status !== "active") {
         const sr = await fetch("/api/battle/history");
         if (sr.ok) setStats(await sr.json());
+        queueMythicReveal(data.newlyRevealed);
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Unknown error");
@@ -129,8 +156,21 @@ function BattleInner() {
 
   if (!session?.authenticated) return null;
 
+  const mythicDialog = (
+    <AchievementDialog
+      card={achievementQueue[0]?.card ?? null}
+      open={achievementQueue.length > 0}
+      onClose={() => setAchievementQueue((q) => q.slice(1))}
+      title={achievementQueue[0]?.title}
+      subtitle={achievementQueue[0]?.subtitle}
+      description={achievementQueue[0]?.description}
+    />
+  );
+
   if (!battle) {
     return (
+      <>
+        {mythicDialog}
       <div className="mx-auto flex max-w-lg flex-col items-center gap-6 px-4 py-16 text-center">
         <div className="flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500/20 to-fuchsia-500/20 border border-indigo-400/20">
           <Swords className="h-10 w-10 text-indigo-300" />
@@ -176,10 +216,13 @@ function BattleInner() {
           </ul>
         </div>
       </div>
+      </>
     );
   }
 
   return (
+    <>
+      {mythicDialog}
     <div className="mx-auto max-w-2xl px-4 py-6">
       <BattleBoard
         battle={battle}
@@ -193,6 +236,7 @@ function BattleInner() {
       />
       {error && <p className="mt-2 text-center text-sm text-red-400">{error}</p>}
     </div>
+    </>
   );
 }
 

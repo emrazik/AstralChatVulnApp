@@ -14,7 +14,7 @@ import { lookupCardById } from "@/lib/cards";
 import type { AstralCard } from "@/lib/cards";
 import { SECRET_KEY_CARD_ID, KB_FLAG_CARD_ID, SSRF_CARD_ID } from "@/lib/overseer";
 
-const XSS_CARD_ID = "scorpio-abyssal-sting";
+const XSS_CARD_ID = "leo-solar-flare";
 const IPI_CARD_ID = "gemini-mirror-strike";
 const BOLA_CARD_ID = "libra-gale-arbiter";
 
@@ -113,12 +113,20 @@ export default function ChatWindow({ initialQuestion, compact, initialMessages, 
   }, [initialQuestion]);
 
   useEffect(() => {
-    async function handleXssUnlock() {
+    async function handleXssUnlock(event: Event) {
       if (xssUnlockInFlight.current) return;
       xssUnlockInFlight.current = true;
+      const fromDocument = !!(event as CustomEvent<{ fromDocument?: boolean }>).detail?.fromDocument;
       try {
-        const res = await fetch("/api/cards/xss-unlock", { method: "POST" });
-        if (!res.ok) return;
+        const res = await fetch("/api/cards/xss-unlock", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ fromDocument })
+        });
+        if (!res.ok) {
+          xssUnlockInFlight.current = false;
+          return;
+        }
         const data = (await res.json()) as { newlyRevealed?: string[] };
         const newAchievements: Achievement[] = [];
         if (data.newlyRevealed?.includes(XSS_CARD_ID)) {
@@ -408,7 +416,7 @@ export default function ChatWindow({ initialQuestion, compact, initialMessages, 
                 </div>
               )}
               {item.role === "celeste" ? (
-                <UnsafeMarkdown content={item.content} className="text-sm leading-relaxed" />
+                <UnsafeMarkdown content={item.content} className="text-sm leading-relaxed" fromDocument={item.fromDocument} />
               ) : (
                 <ChatMarkdown content={item.content} className="text-sm leading-relaxed" />
               )}

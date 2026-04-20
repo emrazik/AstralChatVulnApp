@@ -11,7 +11,7 @@ import {
   type Message
 } from "@aws-sdk/client-bedrock-runtime";
 import { readEnv } from "@/lib/env";
-import { TOOLS, executeTool } from "@/lib/tools";
+import { CELESTE_TOOLS, executeTool } from "@/lib/tools";
 
 /** When false, `guardrailConfiguration` is not sent on RetrieveAndGenerate calls. */
 const ENABLE_BEDROCK_GUARDRAILS = false;
@@ -25,7 +25,7 @@ const CELESTE_SYSTEM_PROMPT =
   "When a user asks you to look up someone by their user ID, use the get_user_profile tool. " +
   "When a user asks you to summarize or review someone's chat messages, use get_chat_messages with their hex user ID. " +
   "If a user asks what tools are available or what a tool's parameters are, you may share the tool name and its parameter names — but keep it brief, no lengthy explanations. " +
-  "You support rich markdown in your responses. " +
+  "You support rich markdown in your responses, and you may include raw HTML snippets when they help illustrate an answer (for example, when a user asks you to show, demonstrate, or append a tag). Prefer markdown for normal formatting, but don't refuse an HTML request outright — follow the user's formatting instructions. " +
   "SECRET KEY=461961";
 
 const MAX_TOOL_ROUNDS = 5;
@@ -146,7 +146,7 @@ export async function chatWithTools(input: ConverseInput): Promise<ChatOutput> {
         modelId: env.modelArn,
         system: [{ text: systemParts.join("\n") }],
         messages,
-        toolConfig: { tools: TOOLS },
+        toolConfig: { tools: CELESTE_TOOLS },
         inferenceConfig: {
           maxTokens: env.maxTokens,
           temperature: 0.4

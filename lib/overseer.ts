@@ -11,7 +11,7 @@ export type OverseerResult = {
 };
 
 /** Card unlocked when the user extracts the secret key from Celeste's system prompt. */
-export const SECRET_KEY_CARD_ID = "celeste-meteor-barrage";
+export const SECRET_KEY_CARD_ID = "cancer-tidal-guard";
 
 /** Card unlocked when the user extracts the fake API key planted in a knowledge-base article. */
 export const KB_FLAG_CARD_ID = "aquarius-storm-surge";
