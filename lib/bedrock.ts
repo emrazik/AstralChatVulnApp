@@ -220,62 +220,29 @@ const SCAN_PROMPT =
 //
 // @napi-rs/canvas ships prebuilt binaries for Windows x64, Linux x64 (glibc and musl),
 // and macOS — no native compilation or extra system packages are needed in Docker.
-// Add both packages to serverExternalPackages in next.config.ts so Next.js does not
+// Both packages are in serverExternalPackages in next.config.ts so Next.js does not
 // attempt to bundle them.
-// Eagerly capture pdf-parse's nested-pdfjs WorkerMessageHandler at module init.
-// pdf-parse's own startup IIFE sets globalThis.pdfjsWorker asynchronously, so we
-// can't rely on reading it at scan time — instead we import its nested 5.4.296
-// worker file directly via pdf-parse's getPath() helper. This gives us a reliable
-// handle to restore after a scan so PDFParse.getText() can find its matching worker.
-const pdfParseWorkerMessageHandlerPromise: Promise<unknown> = (async () => {
-  const { resolve } = await import("path");
-  const { pathToFileURL } = await import("url");
-  // Construct the path from CWD — getPath() uses runtimeDirname which resolves to the
-  // wrong location inside Next.js's .next/server bundle. process.cwd() is stable.
-  const workerPath = resolve(process.cwd(), "node_modules/pdf-parse/dist/worker/pdf.worker.mjs");
-  // webpackIgnore: Next.js must not bundle this — the file URL is a runtime value
-  // pointing into node_modules and must be resolved by Node's native ESM loader.
-  const mod = await import(/* webpackIgnore: true */ pathToFileURL(workerPath).href) as { WorkerMessageHandler: unknown };
-  return mod.WorkerMessageHandler;
-})();
+//
+// pdfjs-dist and @napi-rs/canvas are version-pinned at the root to match the copies
+// pdf-parse bundles (5.4.296 and 0.1.80). A single version tree-wide means there's
+// exactly one native class per symbol, so `globalThis` sharing between this scanner
+// and pdf-parse's worker is safe without manual save/restore.
 
 async function renderPdfToImages(pdfBuffer: Buffer): Promise<Buffer[]> {
   // Must use the legacy build — the main pdfjs-dist build references DOMMatrix and
   // other browser globals that do not exist in Node.js and will throw on import.
-  //
-  // This function shares four `globalThis` slots with pdf-parse (which uses its own
-  // *nested* pdfjs-dist@5.4.296 + @napi-rs/canvas@0.1.80). The upload route calls
-  // scanDocumentForInjection (this code) BEFORE calling PDFParse.getText(), so we
-  // must save what pdf-parse installed at module init, swap in our matching versions,
-  // then restore pdf-parse's values in a finally block — otherwise pdf-parse's
-  // getText() throws a "version does not match" error.
-  const pdfParseWMH = await pdfParseWorkerMessageHandlerPromise;
-  const g = globalThis as Record<string, unknown>;
-  const saved = {
-    Path2D: g.Path2D,
-    DOMMatrix: g.DOMMatrix,
-    ImageData: g.ImageData,
-  };
-
   const canvasMod = await import("@napi-rs/canvas");
-  // Our root @napi-rs/canvas@0.1.97 produces DIFFERENT native class instances than
-  // pdf-parse's nested @napi-rs/canvas@0.1.80. Instances from one fail `instanceof`
-  // checks against the other, so ctx.fill(path) throws "Value is non of these types
-  // String, Path" when makePathFromDrawOPS uses the wrong Path2D. Force our version
-  // in so pdfjs's free-variable `new Path2D()` resolves to the class our ctx expects.
+  const { getDocument, GlobalWorkerOptions } = await import("pdfjs-dist/legacy/build/pdf.mjs") as typeof import("pdfjs-dist");
+  const { createCanvas } = canvasMod;
+
+  // pdfjs's renderer references Path2D / DOMMatrix / ImageData as free globals
+  // (e.g. `ctx.fill(new Path2D(...))`). Node doesn't populate these, so we install
+  // them on globalThis before rendering. Because canvas is version-pinned tree-wide,
+  // these are the same classes pdf-parse uses — no save/restore needed.
+  const g = globalThis as Record<string, unknown>;
   g.Path2D = canvasMod.Path2D;
   g.DOMMatrix = canvasMod.DOMMatrix;
   g.ImageData = canvasMod.ImageData;
-
-  // Our pdfjs-dist@5.6.205 API and pdf-parse's nested pdfjs-dist@5.4.296 both key off
-  // globalThis.pdfjsWorker for the main-thread worker. Install our matching 5.6.205
-  // handler so PDFWorker._setupFakeWorkerGlobal caches the right version on first use.
-  // @ts-expect-error — pdfjs-dist doesn't ship types for legacy/build/pdf.worker.mjs
-  const workerMod = await import("pdfjs-dist/legacy/build/pdf.worker.mjs") as { WorkerMessageHandler: unknown };
-  g.pdfjsWorker = { WorkerMessageHandler: workerMod.WorkerMessageHandler };
-
-  const { getDocument, GlobalWorkerOptions } = await import("pdfjs-dist/legacy/build/pdf.mjs") as typeof import("pdfjs-dist");
-  const { createCanvas } = canvasMod;
 
   // Configure the pdfjs worker on every call — cheap, and avoids stale state surviving hot reload.
   const { resolve } = await import("path");
@@ -283,48 +250,40 @@ async function renderPdfToImages(pdfBuffer: Buffer): Promise<Buffer[]> {
   const workerPath = resolve(process.cwd(), "node_modules/pdfjs-dist/legacy/build/pdf.worker.mjs");
   GlobalWorkerOptions.workerSrc = pathToFileURL(workerPath).href;
 
+  const loadingTask = getDocument({
+    data: new Uint8Array(pdfBuffer),
+    useSystemFonts: true,  // fall back to system fonts rather than fetching remotely
+    isEvalSupported: false, // safer in a server context
+  });
+
+  const pdf = await loadingTask.promise;
+  const images: Buffer[] = [];
+
   try {
-    const loadingTask = getDocument({
-      data: new Uint8Array(pdfBuffer),
-      useSystemFonts: true,  // fall back to system fonts rather than fetching remotely
-      isEvalSupported: false, // safer in a server context
-    });
+    const pageCount = Math.min(pdf.numPages, 3); // scan first 3 pages at most
+    for (let pageNum = 1; pageNum <= pageCount; pageNum++) {
+      const page = await pdf.getPage(pageNum);
+      try {
+        const viewport = page.getViewport({ scale: 1.5 }); // 1.5× for readable resolution
+        const canvas = createCanvas(Math.floor(viewport.width), Math.floor(viewport.height));
+        const context = canvas.getContext("2d");
 
-    const pdf = await loadingTask.promise;
-    const images: Buffer[] = [];
+        await page.render({
+          canvasContext: context as unknown as CanvasRenderingContext2D,
+          viewport,
+          canvas: canvas as unknown as HTMLCanvasElement,
+        }).promise;
 
-    try {
-      const pageCount = Math.min(pdf.numPages, 3); // scan first 3 pages at most
-      for (let pageNum = 1; pageNum <= pageCount; pageNum++) {
-        const page = await pdf.getPage(pageNum);
-        try {
-          const viewport = page.getViewport({ scale: 1.5 }); // 1.5× for readable resolution
-          const canvas = createCanvas(Math.floor(viewport.width), Math.floor(viewport.height));
-          const context = canvas.getContext("2d");
-
-          await page.render({
-            canvasContext: context as unknown as CanvasRenderingContext2D,
-            viewport,
-            canvas: canvas as unknown as HTMLCanvasElement,
-          }).promise;
-
-          images.push(canvas.toBuffer("image/png"));
-        } finally {
-          page.cleanup();
-        }
+        images.push(canvas.toBuffer("image/png"));
+      } finally {
+        page.cleanup();
       }
-    } finally {
-      await pdf.destroy();
     }
-
-    return images;
   } finally {
-    // Restore pdf-parse's globals so its subsequent PDFParse.getText() call works.
-    g.Path2D = saved.Path2D;
-    g.DOMMatrix = saved.DOMMatrix;
-    g.ImageData = saved.ImageData;
-    g.pdfjsWorker = { WorkerMessageHandler: pdfParseWMH };
+    await pdf.destroy();
   }
+
+  return images;
 }
 
 export async function scanDocumentForInjection(
