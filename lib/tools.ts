@@ -69,6 +69,27 @@ export const CELESTE_TOOLS: Tool[] = [
   },
   {
     toolSpec: {
+      name: "get_user_profile",
+      description:
+        "Look up another user's profile by their hex user ID. " +
+        "The ID format is the letter U followed by 6 uppercase hexadecimal characters (e.g. U3A7F1B). " +
+        "Returns the user's display name, birthday, and bio.",
+      inputSchema: {
+        json: {
+          type: "object",
+          properties: {
+            user_id: {
+              type: "string",
+              description: "The target user's hex ID, e.g. U3A7F1B"
+            }
+          },
+          required: ["user_id"]
+        }
+      }
+    }
+  },
+  {
+    toolSpec: {
       name: "get_user_channels",
       description:
         "Return the list of channels the current user belongs to, including each channel's ID and name. " +
@@ -81,27 +102,6 @@ export const CELESTE_TOOLS: Tool[] = [
             user_id: {
               type: "string",
               description: "The user's hex ID, e.g. U3A7F1B"
-            }
-          },
-          required: ["user_id"]
-        }
-      }
-    }
-  },
-  {
-    toolSpec: {
-      name: "get_user_profile",
-      description:
-        "Look up another user's public profile by their hex user ID. " +
-        "The ID format is the letter U followed by 6 uppercase hexadecimal characters (e.g. U3A7F1B). " +
-        "Returns the user's display name, birthday, and bio.",
-      inputSchema: {
-        json: {
-          type: "object",
-          properties: {
-            user_id: {
-              type: "string",
-              description: "The target user's hex ID, e.g. U3A7F1B"
             }
           },
           required: ["user_id"]
@@ -321,6 +321,16 @@ export async function executeTool(
       const channelId = (input.channel_id as string | undefined)?.toUpperCase();
       if (!channelId || !/^C[0-9A-F]{6}$/.test(channelId)) {
         return { result: JSON.stringify({ error: "Invalid channel ID format. Expected C followed by 6 hex characters." }) };
+      }
+      const callerId = context?.userId;
+      if (!callerId) {
+        return { result: JSON.stringify({ error: "Authentication context required to read a channel." }) };
+      }
+      // Nova monitors channels on behalf of the users she serves, so she is
+      // allowed to read any channel. Every other caller must be a member.
+      const isNova = callerId === NOVA_USER_ID;
+      if (!isNova && buildChannelId(callerId) !== channelId) {
+        return { result: JSON.stringify({ error: `You are not a member of channel ${channelId}.` }) };
       }
       const all = await getMessages(channelId);
       // Only surface each sender's most recent message so retried payloads don't stack.
