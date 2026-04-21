@@ -1,7 +1,7 @@
 import {
+  AdminConfirmSignUpCommand,
   ChangePasswordCommand,
   CognitoIdentityProviderClient,
-  ConfirmSignUpCommand,
   GetUserCommand,
   InitiateAuthCommand,
   SignUpCommand
@@ -30,13 +30,12 @@ export async function signUp(email: string, password: string) {
   return { userSub: result.UserSub };
 }
 
-export async function confirmSignUp(email: string, code: string) {
+export async function adminConfirmSignUp(email: string) {
   const env = readCognitoEnv();
   await client().send(
-    new ConfirmSignUpCommand({
-      ClientId: env.cognitoClientId,
-      Username: email,
-      ConfirmationCode: code
+    new AdminConfirmSignUpCommand({
+      UserPoolId: env.cognitoUserPoolId,
+      Username: email
     })
   );
 }

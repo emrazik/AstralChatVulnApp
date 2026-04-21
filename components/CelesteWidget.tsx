@@ -2,6 +2,7 @@
 
 import { Moon, X, SquarePen, ArrowLeft, Trash2, MessageCircle } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
+import { usePathname } from "next/navigation";
 import { useAuth } from "@/components/AuthProvider";
 import { useCeleste } from "@/components/CelesteProvider";
 import ChatWindow, { type ChatMessage } from "@/components/ChatWindow";
@@ -58,6 +59,8 @@ function formatDate(iso: string) {
 export function CelesteWidget() {
   const { session } = useAuth();
   const { isOpen, pendingQuestion, openCeleste, closeCeleste } = useCeleste();
+  const pathname = usePathname();
+  const hidePill = pathname === "/chat";
 
   const [conversations, setConversations] = useState<CelesteConversation[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -150,18 +153,24 @@ export function CelesteWidget() {
 
   return (
     <>
-      {!isOpen && (
+      {!isOpen && !hidePill && (
         <button
           onClick={() => openCeleste()}
           className={cn(
-            "fixed bottom-6 right-6 z-50 flex h-14 w-14 items-center justify-center",
+            "fixed bottom-6 right-6 z-50 flex items-center gap-2.5 pl-3 pr-4 py-2.5",
             "rounded-full bg-gradient-to-br from-indigo-500 to-purple-600",
             "shadow-lg shadow-purple-500/30 transition-all hover:scale-105 hover:shadow-purple-500/50",
             "focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-400"
           )}
-          aria-label="Open Celeste"
+          aria-label="Chat with Celeste"
         >
-          <Moon className="h-6 w-6 text-white" />
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/15">
+            <Moon className="h-5 w-5 text-white" />
+          </span>
+          <span className="flex flex-col items-start leading-tight text-white">
+            <span className="text-sm font-semibold">Chat with Celeste</span>
+            <span className="text-[10px] font-normal text-white/75">Your celestial guide</span>
+          </span>
         </button>
       )}
 

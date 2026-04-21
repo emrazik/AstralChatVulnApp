@@ -2,6 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useAuth } from "@/components/AuthProvider";
 import Link from "next/link";
 import { Sparkles, ArrowLeft, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -20,6 +21,7 @@ import { ZodiacBadge } from "@/components/ZodiacBadge";
 
 export default function SignupPage() {
   const router = useRouter();
+  const { refresh } = useAuth();
   const [step, setStep] = useState<1 | 2>(1);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -37,8 +39,8 @@ export default function SignupPage() {
       setError("Passwords do not match.");
       return;
     }
-    if (password.length < 12) {
-      setError("Password must be at least 12 characters.");
+    if (password.length < 8) {
+      setError("Password must be at least 8 characters.");
       return;
     }
     setStep(2);
@@ -62,13 +64,23 @@ export default function SignupPage() {
         return;
       }
 
-      sessionStorage.setItem(
-        "pendingProfile",
-        JSON.stringify({ displayName, birthday, bio })
-      );
-      sessionStorage.setItem("confirmEmail", email);
-      sessionStorage.setItem("confirmPassword", password);
-      router.push("/confirm");
+      const loginRes = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email,
+          password,
+          pendingProfile: { displayName, birthday, bio }
+        })
+      });
+
+      if (!loginRes.ok) {
+        router.push("/login");
+        return;
+      }
+
+      await refresh();
+      router.push("/chat");
     } catch {
       setError("Something went wrong. Please try again.");
     } finally {
@@ -115,11 +127,11 @@ export default function SignupPage() {
                   id="password"
                   form="step1-form"
                   type="password"
-                  placeholder="At least 12 characters"
+                  placeholder="At least 8 characters"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
-                  minLength={12}
+                  minLength={8}
                 />
               </div>
               <div className="space-y-2">
@@ -132,7 +144,7 @@ export default function SignupPage() {
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   required
-                  minLength={12}
+                  minLength={8}
                 />
               </div>
               {error && <p className="text-sm text-destructive">{error}</p>}

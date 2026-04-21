@@ -19,9 +19,9 @@ export async function PUT(request: Request) {
       { status: 400 }
     );
   }
-  if (body.newPassword.length < 12) {
+  if (body.newPassword.length < 8) {
     return NextResponse.json(
-      { message: "New password must be at least 12 characters." },
+      { message: "New password must be at least 8 characters." },
       { status: 400 }
     );
   }

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { signUp } from "@/lib/auth";
+import { adminConfirmSignUp, signUp } from "@/lib/auth";
 
 type SignUpBody = {
   email?: string;
@@ -17,6 +17,7 @@ export async function POST(request: Request) {
 
   try {
     const result = await signUp(body.email, body.password);
+    await adminConfirmSignUp(body.email);
     return NextResponse.json({
       message: "Sign-up successful.",
       userSub: result.userSub,

@@ -83,8 +83,8 @@ export default function ProfilePage() {
       setPwMsg({ type: "err", text: "New passwords do not match." });
       return;
     }
-    if (newPassword.length < 12) {
-      setPwMsg({ type: "err", text: "New password must be at least 12 characters." });
+    if (newPassword.length < 8) {
+      setPwMsg({ type: "err", text: "New password must be at least 8 characters." });
       return;
     }
     const res = await fetch("/api/auth/password", {
