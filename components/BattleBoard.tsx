@@ -616,7 +616,7 @@ export function BattleBoard({
             <>
               <Button onClick={handleConfirmPlays} disabled={loading}
                 className="bg-indigo-500 text-white hover:bg-indigo-600">
-                {loading ? "Placing cards..." : pendingPlays.length > 0 ? `Confirm ${pendingPlays.length} card${pendingPlays.length > 1 ? "s" : ""}` : "Skip — no cards to play"}
+                {loading ? "Placing cards..." : pendingPlays.length > 0 ? `Confirm ${pendingPlays.length} card${pendingPlays.length > 1 ? "s" : ""}` : "Skip turn"}
               </Button>
               {pendingPlays.length > 0 && (
                 <Button variant="ghost" onClick={handleUndoPlays} className="text-slate-400">

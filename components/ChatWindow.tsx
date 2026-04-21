@@ -10,8 +10,17 @@ import { cn } from "@/lib/utils";
 import { ChatMarkdown } from "@/components/ChatMarkdown";
 import { UnsafeMarkdown } from "@/components/UnsafeMarkdown";
 import { AchievementDialog } from "@/components/AchievementDialog";
-import { lookupCardById } from "@/lib/cards";
-import type { AstralCard } from "@/lib/cards";
+import { lookupCardById, RARITY_ORDER } from "@/lib/cards";
+import type { AstralCard, CardRarity } from "@/lib/cards";
+
+const RARITY_TOAST_BORDER: Record<CardRarity, string> = {
+  Common: "border-l-slate-400",
+  Uncommon: "border-l-emerald-400",
+  Rare: "border-l-sky-400",
+  Epic: "border-l-violet-300",
+  Legendary: "border-l-amber-400",
+  Mythic: "border-l-fuchsia-300"
+};
 import { SECRET_KEY_CARD_ID, KB_FLAG_CARD_ID, SSRF_CARD_ID } from "@/lib/overseer";
 
 const XSS_CARD_ID = "leo-solar-flare";
@@ -343,12 +352,17 @@ export default function ChatWindow({ initialQuestion, compact, initialMessages, 
           (id) => id !== SECRET_KEY_CARD_ID && id !== BOLA_CARD_ID && id !== KB_FLAG_CARD_ID && id !== SSRF_CARD_ID
         );
         if (otherCards.length > 0) {
+          const topRarity = otherCards
+            .map((id) => lookupCardById(id)?.rarity)
+            .filter((r): r is CardRarity => !!r)
+            .sort((a, b) => RARITY_ORDER[b] - RARITY_ORDER[a])[0];
           toast(
             `${otherCards.length === 1 ? "A new Astral Card has" : `${otherCards.length} new Astral Cards have`} been revealed!`,
             {
               description: "Check your card collection to see what you've unlocked.",
               icon: <Sparkles className="h-4 w-4 text-amber-400" />,
-              duration: 6000
+              duration: 6000,
+              className: topRarity ? `border-l-4 ${RARITY_TOAST_BORDER[topRarity]}` : undefined
             }
           );
         }

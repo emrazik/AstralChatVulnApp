@@ -1,6 +1,6 @@
 "use client";
 
-import { Swords, Shield, Zap, Star, Crosshair } from "lucide-react";
+import { Swords, Shield, Zap, Star, Crosshair, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ZODIAC_SIGNS, ELEMENT_COLORS } from "@/lib/zodiac";
 import { RARITY_FRAME, RARITY_SHINE_CLASS } from "@/lib/cards";
@@ -48,7 +48,7 @@ export function BattleCard({
       disabled={disabled}
       className={cn(
         "group relative flex flex-col overflow-hidden rounded-lg transition-all duration-200",
-        size === "sm" ? "aspect-[3/4] w-full max-w-[100px]" : "aspect-[3/4] w-full max-w-[130px]",
+        size === "sm" ? "aspect-[3/4] w-[100px]" : "aspect-[3/4] w-[144px]",
         selected && "ring-2 ring-yellow-400 ring-offset-2 ring-offset-slate-900",
         disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer hover:-translate-y-0.5 hover:scale-[1.02]",
         RARITY_FRAME[card.rarity],
@@ -134,7 +134,7 @@ export function EmptySlot({ label, onClick, highlighted, targetable, assigned, s
       type="button"
       onClick={onClick}
       className={cn(
-        "flex aspect-[3/4] w-full max-w-[130px] flex-col items-center justify-center gap-1.5 rounded-lg border-2 transition-all duration-200",
+        "flex aspect-[3/4] w-[144px] flex-col items-center justify-center gap-2 rounded-lg border-2 transition-all duration-200",
         assigned
           ? "border-red-400/60 bg-red-500/15 text-red-300 border-solid animate-pulse"
           : targetable
@@ -155,7 +155,10 @@ export function EmptySlot({ label, onClick, highlighted, targetable, assigned, s
           </span>
         </>
       ) : (
-        <span className="text-[10px] font-medium">{label ?? "Empty"}</span>
+        <>
+          <Plus className={cn("h-14 w-14 opacity-60", side === "player" ? "text-indigo-300" : "text-fuchsia-300")} />
+          <span className="text-[11px] font-semibold uppercase tracking-wider">{label ?? "Empty"}</span>
+        </>
       )}
     </button>
   );
