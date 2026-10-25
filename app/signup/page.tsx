@@ -18,6 +18,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { ZodiacBadge } from "@/components/ZodiacBadge";
+import { BirthdayInput } from "@/components/BirthdayInput";
 
 export default function SignupPage() {
   const router = useRouter();
@@ -182,12 +183,10 @@ export default function SignupPage() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="birthday">Birthday</Label>
-                <Input
+                <BirthdayInput
                   id="birthday"
-                  form="step2-form"
-                  type="date"
                   value={birthday}
-                  onChange={(e) => setBirthday(e.target.value)}
+                  onChange={setBirthday}
                 />
                 {birthday && (
                   <div className="flex items-center gap-2 pt-1">

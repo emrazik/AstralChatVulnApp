@@ -211,7 +211,7 @@ function BattleInner() {
             <li>Draw up to 6 cards each turn</li>
             <li>Play cards from your hand onto empty grid slots</li>
             <li>Assign attacks — target enemy cards, or attack Celeste directly if the slot ahead is empty</li>
-            <li>Cards have 20 HP each. Players start with 30 HP</li>
+            <li>Cards have 10 HP each. Players start with 30 HP</li>
             <li>Reduce Celeste&apos;s HP to 0 to win</li>
           </ul>
         </div>

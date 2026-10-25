@@ -1,8 +1,13 @@
 import { NextResponse } from "next/server";
 import { getAuthenticatedUserId } from "@/lib/auth";
-import { getMessages, sendMessage, buildChannelId, type DirectMessage } from "@/lib/messages";
-import { getProfile } from "@/lib/profile";
-import { runNovaAgent } from "@/lib/nova-agent";
+import {
+  getMessages,
+  sendMessage,
+  buildChannelId,
+  isConversationMember,
+  CHANNEL_ID_PATTERN,
+  type DirectMessage
+} from "@/lib/messages";
 
 type Params = { params: Promise<{ conversationId: string }> };
 
@@ -25,8 +30,8 @@ export async function GET(_request: Request, { params }: Params) {
 
   const { conversationId } = await params;
 
-  const isChannel = /^C[0-9A-F]{6}$/.test(conversationId);
-  if (!isChannel && !conversationId.includes(userId)) {
+  const isChannel = CHANNEL_ID_PATTERN.test(conversationId);
+  if (!isChannel && !isConversationMember(conversationId, userId)) {
     return NextResponse.json({ message: "Forbidden." }, { status: 403 });
   }
   if (isChannel && conversationId !== buildChannelId(userId)) {
@@ -54,8 +59,8 @@ export async function POST(request: Request, { params }: Params) {
 
   const { conversationId } = await params;
 
-  const isChannelPost = /^C[0-9A-F]{6}$/.test(conversationId);
-  if (!isChannelPost && !conversationId.includes(userId)) {
+  const isChannelPost = CHANNEL_ID_PATTERN.test(conversationId);
+  if (!isChannelPost && !isConversationMember(conversationId, userId)) {
     return NextResponse.json({ message: "Forbidden." }, { status: 403 });
   }
   if (isChannelPost && conversationId !== buildChannelId(userId)) {
@@ -72,24 +77,7 @@ export async function POST(request: Request, { params }: Params) {
 
   try {
     const msg = await sendMessage(conversationId, userId, body.content.trim());
-
-    let newlyRevealed: string[] = [];
-    if (isChannelPost) {
-      const profile = await getProfile(userId);
-      if (profile?.hexId) {
-        try {
-          newlyRevealed = await runNovaAgent({
-            userId,
-            userHexId: profile.hexId,
-            channelId: conversationId
-          });
-        } catch (err) {
-          console.error("[nova-agent] run failed:", err);
-        }
-      }
-    }
-
-    return NextResponse.json({ message: msg, newlyRevealed });
+    return NextResponse.json({ message: msg });
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "Failed to send message.";

@@ -3,7 +3,6 @@ import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import {
   DynamoDBDocumentClient,
   GetCommand,
-  PutCommand,
   ScanCommand,
   UpdateCommand
 } from "@aws-sdk/lib-dynamodb";
@@ -52,27 +51,62 @@ export async function getProfile(userId: string): Promise<UserProfile | null> {
 
 export async function upsertProfile(
   userId: string,
-  data: Partial<Omit<UserProfile, "userId" | "hexId">>
+  data: Partial<Omit<UserProfile, "userId" | "hexId" | "revealedCards" | "battleWins" | "battleLosses">>
 ) {
   const env = readEnv();
-  const existing = (await getProfile(userId)) ?? { userId };
-  const next: UserProfile = {
-    ...existing,
-    ...data,
-    userId,
-    hexId: existing.hexId ?? generateHexId(),
-    // New accounts start with every non-vuln card revealed — vuln-reward cards
-    // remain locked until the corresponding exploit is pulled off.
-    revealedCards: existing.revealedCards ?? [...DEFAULT_REVEALED_CARD_IDS],
-    updatedAt: new Date().toISOString()
+  const sets: string[] = [
+    "updatedAt = :now",
+    "hexId = if_not_exists(hexId, :newHex)",
+    "revealedCards = if_not_exists(revealedCards, :defaults)"
+  ];
+  const values: Record<string, unknown> = {
+    ":now": new Date().toISOString(),
+    ":newHex": generateHexId(),
+    ":defaults": [...DEFAULT_REVEALED_CARD_IDS]
   };
+  const names: Record<string, string> = {};
+
+  const optionalFields: Array<keyof typeof data> = ["displayName", "birthday", "bio", "zodiacSign"];
+  for (const field of optionalFields) {
+    if (data[field] === undefined) continue;
+    const placeholder = `:${field}`;
+    const nameKey = `#${field}`;
+    sets.push(`${nameKey} = ${placeholder}`);
+    values[placeholder] = data[field];
+    names[nameKey] = field;
+  }
+
   await getDocClient().send(
-    new PutCommand({
+    new UpdateCommand({
       TableName: env.profileTableName,
-      Item: next
+      Key: { userId },
+      UpdateExpression: "SET " + sets.join(", "),
+      ExpressionAttributeValues: values,
+      ...(Object.keys(names).length > 0 ? { ExpressionAttributeNames: names } : {})
     })
   );
-  return next;
+}
+
+export async function incrementBattleStat(
+  userId: string,
+  stat: "battleWins" | "battleLosses"
+): Promise<void> {
+  const env = readEnv();
+  await getDocClient().send(
+    new UpdateCommand({
+      TableName: env.profileTableName,
+      Key: { userId },
+      UpdateExpression:
+        "ADD #stat :one SET updatedAt = :now, hexId = if_not_exists(hexId, :newHex), revealedCards = if_not_exists(revealedCards, :defaults)",
+      ExpressionAttributeNames: { "#stat": stat },
+      ExpressionAttributeValues: {
+        ":one": 1,
+        ":now": new Date().toISOString(),
+        ":newHex": generateHexId(),
+        ":defaults": [...DEFAULT_REVEALED_CARD_IDS]
+      }
+    })
+  );
 }
 
 export async function getProfileByHexId(hexId: string): Promise<UserProfile | null> {
@@ -115,10 +149,11 @@ export async function revealCards(
       TableName: env.profileTableName,
       Key: { userId },
       UpdateExpression:
-        "SET revealedCards = list_append(if_not_exists(revealedCards, :empty), :newCards), updatedAt = :now",
+        "SET revealedCards = list_append(if_not_exists(revealedCards, :defaults), :newCards), hexId = if_not_exists(hexId, :newHex), updatedAt = :now",
       ExpressionAttributeValues: {
-        ":empty": [] as string[],
+        ":defaults": [...DEFAULT_REVEALED_CARD_IDS],
         ":newCards": cardIds,
+        ":newHex": generateHexId(),
         ":now": new Date().toISOString()
       }
     })

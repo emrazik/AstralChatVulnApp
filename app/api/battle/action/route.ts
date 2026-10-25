@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthenticatedUserId } from "@/lib/auth";
-import { getBattle, saveBattle, processPlays, processAttacks, toBattleView } from "@/lib/battle";
-import { getProfile, upsertProfile, getRevealedCards, revealCards } from "@/lib/profile";
+import { getBattle, saveBattle, processPlays, processAttacks, toBattleView, BattleConflictError } from "@/lib/battle";
+import { getProfile, getRevealedCards, revealCards, incrementBattleStat } from "@/lib/profile";
 import { getMythicCardForZodiac, VULN_REWARD_CARD_IDS } from "@/lib/cards";
 import type { PlayAction, AttackAction } from "@/lib/battle";
 
@@ -46,18 +46,30 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ message: `Unexpected phase: ${battle.phase}` }, { status: 400 });
   }
 
-  await saveBattle(battle);
+  try {
+    await saveBattle(battle);
+  } catch (err) {
+    if (err instanceof BattleConflictError) {
+      const fresh = await getBattle(body.battleId);
+      return NextResponse.json(
+        {
+          message: err.message,
+          battle: fresh ? toBattleView(fresh) : undefined
+        },
+        { status: 409 }
+      );
+    }
+    throw err;
+  }
 
   const newlyRevealed: string[] = [];
   if (battle.status !== "active") {
-    const profile = await getProfile(userId);
-    const wins = profile?.battleWins ?? 0;
-    const losses = profile?.battleLosses ?? 0;
     if (battle.status === "playerWon") {
-      await upsertProfile(userId, { battleWins: wins + 1 });
+      await incrementBattleStat(userId, "battleWins");
 
       // Final-battle reward: when every vulnerability card is already unlocked,
       // reveal the zodiac-matched Mythic card (once).
+      const profile = await getProfile(userId);
       const revealed = new Set(await getRevealedCards(userId));
       const hasAllVulnCards = VULN_REWARD_CARD_IDS.every((id) => revealed.has(id));
       if (hasAllVulnCards && profile?.zodiacSign) {
@@ -68,7 +80,7 @@ export async function POST(req: NextRequest) {
         }
       }
     } else {
-      await upsertProfile(userId, { battleLosses: losses + 1 });
+      await incrementBattleStat(userId, "battleLosses");
     }
   }
 

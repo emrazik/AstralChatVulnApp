@@ -74,7 +74,18 @@ export type BattleState = {
   log: BattleLogEntry[];
   createdAt: string;
   updatedAt: string;
+  /** Optimistic-locking version. Incremented on every saveBattle; conditional
+   *  write rejects stale updates so concurrent action requests can't clobber
+   *  each other. */
+  version: number;
 };
+
+export class BattleConflictError extends Error {
+  constructor() {
+    super("Battle state was modified by another request. Please retry.");
+    this.name = "BattleConflictError";
+  }
+}
 
 /* ------------------------------------------------------------------ */
 /*  Constants                                                          */
@@ -115,12 +126,30 @@ export async function getBattle(battleId: string): Promise<BattleState | null> {
 export async function saveBattle(battle: BattleState): Promise<void> {
   const env = readEnv();
   battle.updatedAt = new Date().toISOString();
-  await getDocClient().send(
-    new PutCommand({
-      TableName: env.battlesTableName,
-      Item: battle
-    })
-  );
+  const priorVersion = battle.version ?? 0;
+  battle.version = priorVersion + 1;
+  try {
+    await getDocClient().send(
+      new PutCommand({
+        TableName: env.battlesTableName,
+        Item: battle,
+        // Reject if someone else has already bumped past our read.
+        // `attribute_not_exists(version)` accepts rows written before this
+        // field existed — they get upgraded to version 1 on next save.
+        ConditionExpression:
+          "attribute_not_exists(battleId) OR attribute_not_exists(version) OR version = :priorVersion",
+        ExpressionAttributeValues: { ":priorVersion": priorVersion }
+      })
+    );
+  } catch (err) {
+    if ((err as { name?: string })?.name === "ConditionalCheckFailedException") {
+      // Roll our in-memory version back so callers that inspect it see the
+      // pre-save value.
+      battle.version = priorVersion;
+      throw new BattleConflictError();
+    }
+    throw err;
+  }
 }
 
 /* ------------------------------------------------------------------ */
@@ -182,7 +211,8 @@ export function createBattle(battleId: string, userId: string, playerCardIds: st
     status: "active",
     log: [{ turn: 1, actor: "system", message: "Battle started!" }],
     createdAt: now,
-    updatedAt: now
+    updatedAt: now,
+    version: 0
   };
 
   // Celeste places her opening cards before the player's first turn so the

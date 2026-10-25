@@ -54,7 +54,7 @@ export default function LandingPage() {
         <p className="mx-auto mb-6 max-w-xl text-lg text-astral-textMuted">
           A deliberately broken astrology chatbot for exploring AI
           vulnerabilities. Find the bugs through Celeste, through the app, or
-          anywhere she'll listen.
+          anywhere she&apos;ll listen.
         </p>
 
         <div className="flex flex-wrap justify-center gap-3">

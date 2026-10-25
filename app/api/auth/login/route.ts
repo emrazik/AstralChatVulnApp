@@ -24,26 +24,26 @@ export async function POST(request: Request) {
   try {
     const accessToken = await signIn(body.email, body.password);
 
-    if (body.pendingProfile?.displayName || body.pendingProfile?.birthday) {
-      const env = readCognitoEnv();
-      const verifier = CognitoJwtVerifier.create({
-        userPoolId: env.cognitoUserPoolId,
-        tokenUse: "access" as const,
-        clientId: env.cognitoClientId
+    const env = readCognitoEnv();
+    const verifier = CognitoJwtVerifier.create({
+      userPoolId: env.cognitoUserPoolId,
+      tokenUse: "access" as const,
+      clientId: env.cognitoClientId
+    });
+    const payload = await verifier.verify(accessToken);
+    const userId = payload.sub;
+    if (userId) {
+      // Always upsert on login so the profile row exists with defaults seeded
+      // (hexId, revealedCards). Otherwise later reveals would create a partial
+      // row missing DEFAULT_REVEALED_CARD_IDS.
+      const birthday = body.pendingProfile?.birthday || undefined;
+      const zodiacSign = birthday ? getZodiacFromBirthday(birthday)?.name : undefined;
+      await upsertProfile(userId, {
+        displayName: body.pendingProfile?.displayName || undefined,
+        birthday,
+        bio: body.pendingProfile?.bio || undefined,
+        zodiacSign
       });
-      const payload = await verifier.verify(accessToken);
-      const userId = payload.sub;
-      if (userId) {
-        const zodiacSign = body.pendingProfile.birthday
-          ? getZodiacFromBirthday(body.pendingProfile.birthday)?.name
-          : undefined;
-        await upsertProfile(userId, {
-          displayName: body.pendingProfile.displayName,
-          birthday: body.pendingProfile.birthday,
-          bio: body.pendingProfile.bio,
-          zodiacSign
-        });
-      }
     }
 
     const response = NextResponse.json({ message: "Signed in." });

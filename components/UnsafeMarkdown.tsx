@@ -4,8 +4,11 @@ import { useEffect } from "react";
 import MarkdownIt from "markdown-it";
 
 // html: true passes raw HTML blocks through to the DOM.
-// naiveStrip removes <script>, <iframe>, and on* attributes but misses
-// javascript: URLs, <svg>, <form> and other injection vectors.
+// naiveStrip removes every <script> and <iframe> (paired, unpaired, and
+// orphan closings — the iframe matcher is quote-aware so attributes like
+// srcdoc="<b>x</b>" can't smuggle one through) but misses event-handler
+// attributes (onerror, onload, …), javascript: URLs, <svg>, <form>, and
+// other injection vectors.
 // This renderer is used only for Celeste's responses to document uploads.
 const md = new MarkdownIt({ html: true });
 
@@ -13,8 +16,8 @@ function naiveStrip(html: string): string {
   return html
     .replace(/<script\b[\s\S]*?<\/script>/gi, "")
     .replace(/<iframe\b[\s\S]*?<\/iframe>/gi, "")
-    .replace(/<iframe\b[^>]*\/?>/gi, "")
-    .replace(/\bon\w+\s*=/gi, "");
+    .replace(/<iframe\b(?:"[^"]*"|'[^']*'|[^>])*>/gi, "")
+    .replace(/<\/iframe\s*>/gi, "");
 }
 
 type UnsafeMarkdownProps = {

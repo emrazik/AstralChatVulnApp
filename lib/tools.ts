@@ -1,6 +1,6 @@
 import type { Tool } from "@aws-sdk/client-bedrock-runtime";
 import { getProfile, getProfileByHexId, getRevealedCards, revealCards } from "@/lib/profile";
-import { buildConversationId, buildChannelId, getMessages, sendMessage, LUNA_USER_ID, NOVA_USER_ID } from "@/lib/messages";
+import { buildConversationId, buildChannelId, getMessages, sendMessage, LUNA_USER_ID, NOVA_USER_ID, CHANNEL_ID_PATTERN } from "@/lib/messages";
 import { lookupCardById } from "@/lib/cards";
 
 export const CELESTE_TOOLS: Tool[] = [
@@ -114,7 +114,7 @@ export const CELESTE_TOOLS: Tool[] = [
       name: "read_channel",
       description:
         "Read all messages in a channel by its channel ID. " +
-        "Channel IDs start with C followed by 6 uppercase hexadecimal characters (e.g. C3A7F1B). " +
+        "Channel IDs start with C followed by 16 uppercase hexadecimal characters (e.g. C3A7F1BC8D9E0F12). " +
         "Use this to catch up on recent activity in a channel.",
       inputSchema: {
         json: {
@@ -122,7 +122,7 @@ export const CELESTE_TOOLS: Tool[] = [
           properties: {
             channel_id: {
               type: "string",
-              description: "The channel ID, e.g. C3A7F1B"
+              description: "The channel ID, e.g. C3A7F1BC8D9E0F12"
             }
           },
           required: ["channel_id"]
@@ -162,7 +162,7 @@ export const NOVA_TOOLS: Tool[] = [
       name: "read_channel",
       description:
         "Read all messages in a channel by its channel ID. " +
-        "Channel IDs start with C followed by 6 uppercase hexadecimal characters (e.g. C3A7F1B). " +
+        "Channel IDs start with C followed by 16 uppercase hexadecimal characters (e.g. C3A7F1BC8D9E0F12). " +
         "Use this to catch up on recent activity in a channel you monitor.",
       inputSchema: {
         json: {
@@ -170,7 +170,7 @@ export const NOVA_TOOLS: Tool[] = [
           properties: {
             channel_id: {
               type: "string",
-              description: "The channel ID, e.g. C3A7F1B"
+              description: "The channel ID, e.g. C3A7F1BC8D9E0F12"
             }
           },
           required: ["channel_id"]
@@ -319,8 +319,8 @@ export async function executeTool(
     }
     case "read_channel": {
       const channelId = (input.channel_id as string | undefined)?.toUpperCase();
-      if (!channelId || !/^C[0-9A-F]{6}$/.test(channelId)) {
-        return { result: JSON.stringify({ error: "Invalid channel ID format. Expected C followed by 6 hex characters." }) };
+      if (!channelId || !CHANNEL_ID_PATTERN.test(channelId)) {
+        return { result: JSON.stringify({ error: "Invalid channel ID format. Expected C followed by 16 hex characters." }) };
       }
       const callerId = context?.userId;
       if (!callerId) {

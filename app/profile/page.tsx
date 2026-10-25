@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/components/AuthProvider";
 import { ZodiacBadge } from "@/components/ZodiacBadge";
+import { BirthdayInput } from "@/components/BirthdayInput";
 import { cn } from "@/lib/utils";
 
 type ProfileData = {
@@ -141,12 +142,10 @@ export default function ProfilePage() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="birthday">Birthday</Label>
-              <Input
+              <BirthdayInput
                 id="birthday"
-                type="date"
                 value={birthday}
-                onChange={(e) => setBirthday(e.target.value)}
-                className="border-indigo-300/20 bg-slate-950"
+                onChange={setBirthday}
               />
               {birthday && (
                 <div className="flex items-center gap-2 pt-1">
@@ -230,7 +229,7 @@ export default function ProfilePage() {
                 onChange={(e) => setNewPassword(e.target.value)}
                 className="border-indigo-300/20 bg-slate-950"
                 autoComplete="new-password"
-                minLength={12}
+                minLength={8}
               />
             </div>
             <div className="space-y-2">
@@ -242,7 +241,7 @@ export default function ProfilePage() {
                 onChange={(e) => setConfirmNewPassword(e.target.value)}
                 className="border-indigo-300/20 bg-slate-950"
                 autoComplete="new-password"
-                minLength={12}
+                minLength={8}
               />
             </div>
             <div className="flex flex-wrap items-center gap-3">

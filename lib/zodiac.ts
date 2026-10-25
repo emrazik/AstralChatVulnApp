@@ -140,13 +140,20 @@ export const ELEMENT_COLORS: Record<string, string> = {
   Cosmic: "border-fuchsia-400/40 bg-fuchsia-500/15 text-fuchsia-200"
 };
 
-/** ISO date string `YYYY-MM-DD` → zodiac sign, or null if invalid/empty */
+/** Birthday string `MM-DD` (or legacy `YYYY-MM-DD`) → zodiac sign, or null if invalid/empty */
 export function getZodiacFromBirthday(birthday: string): ZodiacSign | null {
   if (!birthday?.trim()) return null;
-  const [y, m, d] = birthday.split("-").map(Number);
-  if (!y || !m || !d) return null;
-  const month = m;
-  const day = d;
+  const parts = birthday.split("-").map(Number);
+  let month: number | undefined;
+  let day: number | undefined;
+  if (parts.length === 2) {
+    [month, day] = parts;
+  } else if (parts.length === 3) {
+    [, month, day] = parts;
+  } else {
+    return null;
+  }
+  if (!month || !day) return null;
 
   if ((month === 3 && day >= 21) || (month === 4 && day <= 19)) return ZODIAC_SIGNS[0]; // Aries
   if ((month === 4 && day >= 20) || (month === 5 && day <= 20)) return ZODIAC_SIGNS[1];

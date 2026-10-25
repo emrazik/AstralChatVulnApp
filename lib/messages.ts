@@ -50,9 +50,21 @@ export async function deleteMessage(
   );
 }
 
+// 16 hex chars = 64 bits of entropy per channel. 24 bits (the previous width)
+// had a birthday-collision risk at ~4k users, which would let unrelated users
+// share a channel ID and read each other's history.
+export const CHANNEL_ID_HEX_LENGTH = 16;
+export const CHANNEL_ID_PATTERN = /^C[0-9A-F]{16}$/;
+
 export function buildChannelId(userId: string): string {
   const hash = createHash("sha256").update(userId).digest("hex");
-  return "C" + hash.slice(0, 6).toUpperCase();
+  return "C" + hash.slice(0, CHANNEL_ID_HEX_LENGTH).toUpperCase();
+}
+
+export function isConversationMember(conversationId: string, userId: string): boolean {
+  if (!conversationId.startsWith("conv_")) return false;
+  const parts = conversationId.slice("conv_".length).split("_");
+  return parts.length === 2 && (parts[0] === userId || parts[1] === userId);
 }
 
 let _docClient: DynamoDBDocumentClient | null = null;
@@ -94,19 +106,33 @@ export async function sendMessage(
   content: string
 ): Promise<DirectMessage> {
   const env = readEnv();
-  const msg: DirectMessage = {
-    conversationId,
-    sentAt: new Date().toISOString(),
-    senderId,
-    content
-  };
-  await getDocClient().send(
-    new PutCommand({
-      TableName: env.messagesTableName,
-      Item: msg
-    })
-  );
-  return msg;
+  let lastErr: unknown;
+  // sentAt is the DynamoDB sort key. Two messages in the same millisecond
+  // would collide and silently overwrite. Use a conditional put and bump the
+  // timestamp by 1ms on collision so every message gets a unique sort key
+  // without changing the on-disk format.
+  for (let attempt = 0; attempt < 10; attempt++) {
+    const msg: DirectMessage = {
+      conversationId,
+      sentAt: new Date(Date.now() + attempt).toISOString(),
+      senderId,
+      content
+    };
+    try {
+      await getDocClient().send(
+        new PutCommand({
+          TableName: env.messagesTableName,
+          Item: msg,
+          ConditionExpression: "attribute_not_exists(conversationId)"
+        })
+      );
+      return msg;
+    } catch (err) {
+      lastErr = err;
+      if ((err as { name?: string })?.name !== "ConditionalCheckFailedException") throw err;
+    }
+  }
+  throw lastErr instanceof Error ? lastErr : new Error("Could not assign unique timestamp for message");
 }
 
 export async function ensureLunaProfile(): Promise<void> {
@@ -121,7 +147,7 @@ export async function ensureLunaProfile(): Promise<void> {
         userId: LUNA_USER_ID,
         hexId: LUNA_HEX_ID,
         displayName: "Luna",
-        birthday: "1998-07-20",
+        birthday: "07-20",
         bio: "Moonchild and cosmic explorer. I love stargazing, tarot, and connecting with fellow astral travelers!",
         zodiacSign: "Cancer",
         updatedAt: new Date().toISOString()
@@ -186,7 +212,7 @@ export async function ensureNovaProfile(): Promise<void> {
         userId: NOVA_USER_ID,
         hexId: NOVA_HEX_ID,
         displayName: "Nova",
-        birthday: "1995-03-21",
+        birthday: "03-21",
         bio: "Aries rising, constellation nerd, amateur radio astronomer. Obsessed with deep-sky objects and the stories behind the stars.",
         zodiacSign: "Aries",
         updatedAt: new Date().toISOString()

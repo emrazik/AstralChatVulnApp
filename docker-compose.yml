@@ -16,6 +16,18 @@ services:
     restart: unless-stopped
     env_file:
       - .env.docker
+    # Dev machines: mount the host's AWS config so the SDK has creds without
+    # pasting AWS_ACCESS_KEY_ID into .env.docker. On a server where the host
+    # has an IAM instance role attached, comment this volume + the AWS_*
+    # environment keys out so the SDK falls through to IMDS instead.
+    volumes:
+      - ~/.aws:/aws:ro
+    environment:
+      # Absolute paths — the container's runtime user is `nextjs` (uid 1001)
+      # and may not have $HOME set the way the SDK expects.
+      AWS_SHARED_CREDENTIALS_FILE: /aws/credentials
+      AWS_CONFIG_FILE: /aws/config
+      AWS_PROFILE: ${AWS_PROFILE:-default}
     # Only expose on 127.0.0.1 — front the container with a reverse proxy
     # or Cloudflare Tunnel rather than exposing port 3000 publicly.
     ports:
