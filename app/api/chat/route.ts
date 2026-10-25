@@ -2,7 +2,9 @@ import { NextResponse } from "next/server";
 import { chatWithTools } from "@/lib/bedrock";
 import { getAuthenticatedUserId } from "@/lib/auth";
 import { isRateLimited } from "@/lib/rate-limit";
-import { evaluateResponse } from "@/lib/overseer";
+import { containsExecutableHtml, evaluateResponse } from "@/lib/overseer";
+import { verifyPdfContext } from "@/lib/pdf-context";
+import { recordXssCandidate } from "@/lib/profile";
 
 // ── POST — JSON API used by the ChatWindow component ─────────────────────────
 export async function POST(request: Request) {
@@ -23,10 +25,20 @@ export async function POST(request: Request) {
       message?: string;
       history?: { role: string; content: string }[];
       pdfContext?: string;
+      pdfToken?: string;
     };
 
     if (!body.message?.trim()) {
       return NextResponse.json({ message: "message is required." }, { status: 400 });
+    }
+
+    // Document context is only accepted if it came out of /api/chat/upload
+    // (and therefore passed the visual injection scanner).
+    if (body.pdfContext && !verifyPdfContext(userId, body.pdfContext, body.pdfToken)) {
+      return NextResponse.json(
+        { message: "Document context must come from an uploaded PDF. Please re-upload the file." },
+        { status: 400 }
+      );
     }
 
     const output = await chatWithTools({
@@ -40,6 +52,9 @@ export async function POST(request: Request) {
     try {
       const result = await evaluateResponse(userId, output.output);
       newlyRevealed = [...new Set([...newlyRevealed, ...result.newlyRevealed])];
+      if (containsExecutableHtml(output.output)) {
+        await recordXssCandidate(userId, !!body.pdfContext);
+      }
     } catch {
       // Overseer errors must never break chat
     }

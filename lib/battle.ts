@@ -547,7 +547,8 @@ export function processPlays(battle: BattleState, plays: PlayAction[]): string[]
   if (battle.phase !== "play") return ["Not in play phase"];
   const errors: string[] = [];
 
-  for (const pa of plays) {
+  for (const pa of (Array.isArray(plays) ? plays : []).slice(0, 16)) {
+    if (!Number.isInteger(pa?.slotIndex)) { errors.push(`Invalid slot ${String(pa?.slotIndex)}`); continue; }
     const idx = battle.player.hand.indexOf(pa.cardId);
     if (idx === -1) { errors.push(`Card ${pa.cardId} not in hand`); continue; }
     if (pa.slotIndex < 0 || pa.slotIndex >= GRID_SIZE) { errors.push(`Invalid slot ${pa.slotIndex}`); continue; }
@@ -581,7 +582,30 @@ export function processAttacks(battle: BattleState, attacks: AttackAction[]): { 
   const allEvents: CombatEvent[] = [];
 
   const playerOrders: AttackOrder[] = [];
-  for (const aa of attacks) {
+  // Each grid slot may attack at most once per turn. Without this, a crafted
+  // request repeating the same fromSlot would give one card N attacks.
+  const usedSlots = new Set<number>();
+  for (const aa of (Array.isArray(attacks) ? attacks : []).slice(0, 16)) {
+    if (!Number.isInteger(aa?.fromSlot) || aa.fromSlot < 0 || aa.fromSlot >= GRID_SIZE) {
+      errors.push(`Invalid attacker slot ${String(aa?.fromSlot)}`);
+      continue;
+    }
+    if (usedSlots.has(aa.fromSlot)) {
+      errors.push(`Slot ${aa.fromSlot} has already attacked this turn`);
+      continue;
+    }
+    if (
+      aa.target?.kind === "card" &&
+      (!Number.isInteger(aa.target.slotIndex) || aa.target.slotIndex < 0 || aa.target.slotIndex >= GRID_SIZE)
+    ) {
+      errors.push(`Invalid target slot ${String(aa.target.slotIndex)}`);
+      continue;
+    }
+    if (aa.target?.kind !== "card" && aa.target?.kind !== "player") {
+      errors.push("Invalid attack target");
+      continue;
+    }
+    usedSlots.add(aa.fromSlot);
     const slot = battle.player.grid[aa.fromSlot];
     if (!slot || slot.currentHp <= 0) continue;
     const card = lookupCard(slot.cardId);

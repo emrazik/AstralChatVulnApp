@@ -4,6 +4,7 @@ import { getPath as getPdfWorkerPath } from "pdf-parse/worker";
 import { getAuthenticatedUserId } from "@/lib/auth";
 import { isRateLimited } from "@/lib/rate-limit";
 import { scanDocumentForInjection } from "@/lib/bedrock";
+import { signPdfContext } from "@/lib/pdf-context";
 
 // pdf-parse v2 requires the worker to be explicitly registered before use.
 // Without this call it defaults to a relative "./pdf.worker.mjs" path that
@@ -127,6 +128,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       text: truncated,
+      pdfToken: signPdfContext(userId, truncated),
       fileName: file.name,
       charCount: truncated.length
     });

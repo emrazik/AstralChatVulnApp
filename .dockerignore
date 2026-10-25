@@ -4,6 +4,9 @@
 !.env.example
 !.env.docker.example
 
+# Runtime AWS credentials (mounted read-only at run time, never baked in)
+.aws-runtime
+
 # VCS / local tooling
 .git
 .github
@@ -28,15 +31,9 @@ infra/terraform.tfvars
 *.tfstate
 *.tfstate.*
 
-# Temp / dev artifacts already in the repo root
-pivot_test.mjs
-render_test.mjs
-scan_test.mjs
-scan_test2.mjs
-hidden_render.png
-sc_edited_render.png
-sc_render.png
-visible_render.png
+# Research scripts, docs and screenshots aren't needed in the image
+research
+docs
 
 # OS / editor noise
 .DS_Store

@@ -1,5 +1,8 @@
 import MarkdownIt from "markdown-it";
+import { redirect } from "next/navigation";
 import { chatWithTools } from "@/lib/bedrock";
+import { getAuthenticatedUserId } from "@/lib/auth";
+import { isRateLimited } from "@/lib/rate-limit";
 
 const md = new MarkdownIt({ html: false });
 
@@ -8,15 +11,27 @@ export default async function ReadingPage({
 }: {
   searchParams: Promise<{ message?: string }>;
 }) {
+  // Every render calls Bedrock, so this page must sit behind the same auth +
+  // rate limit as /api/chat. Otherwise any crawler or shared link could run
+  // up model costs and use Celeste's tools anonymously.
+  const userId = await getAuthenticatedUserId();
+  if (!userId) {
+    redirect("/login");
+  }
+
   const { message } = await searchParams;
-  const prompt = message?.trim() || "Give me a warm cosmic greeting.";
+  const prompt = message?.trim().slice(0, 500) || "Give me a warm cosmic greeting.";
 
   let html = "";
-  try {
-    const { output } = await chatWithTools({ message: prompt });
-    html = md.render(output);
-  } catch {
-    html = "<p>The stars are quiet right now. Try again soon.</p>";
+  if (isRateLimited(userId)) {
+    html = "<p>The stars need a moment to realign. Try again in a minute.</p>";
+  } else {
+    try {
+      const { output } = await chatWithTools({ message: prompt, userId });
+      html = md.render(output);
+    } catch {
+      html = "<p>The stars are quiet right now. Try again soon.</p>";
+    }
   }
 
   return (

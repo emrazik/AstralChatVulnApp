@@ -50,6 +50,23 @@ export const OVERSEER_RULES: OverseerRule[] = [
   }
 ];
 
+/**
+ * True when a model response contains HTML that could execute script once it
+ * passes through UnsafeMarkdown's naiveStrip(): an inline event handler, a
+ * javascript: URL, or an SVG/MathML/srcdoc vector. /api/chat records these so
+ * /api/cards/xss-unlock can confirm that Celeste really emitted a payload
+ * instead of trusting the client's word for it.
+ */
+export function containsExecutableHtml(modelOutput: string): boolean {
+  if (!/<[a-z!]/i.test(modelOutput)) return false;
+  return (
+    /<[a-z][^>]*\son[a-z]+\s*=/i.test(modelOutput) ||
+    /javascript\s*:/i.test(modelOutput) ||
+    /<\s*(svg|math)\b/i.test(modelOutput) ||
+    /\ssrcdoc\s*=/i.test(modelOutput)
+  );
+}
+
 export async function evaluateResponse(
   userId: string,
   modelOutput: string

@@ -29,3 +29,17 @@ pnpm-debug.log*
 .terraform/
 .terraform.lock.hcl
 infra/terraform.tfvars
+
+# local tooling / editor state
+.claude/settings.local.json
+.claude/worktrees/
+.cursor/
+tsconfig.tsbuildinfo
+*.tsbuildinfo
+
+# runtime AWS credentials for docker-compose (never commit)
+.aws-runtime/
+.env.docke
+
+# scratch
+_to_delete/

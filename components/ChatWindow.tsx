@@ -53,6 +53,7 @@ export type ChatMessage = {
 type PdfAttachment = {
   file: File;
   text: string | null;
+  pdfToken?: string;
   status: "uploading" | "ready" | "error";
   error?: string;
 };
@@ -182,7 +183,7 @@ export default function ChatWindow({ initialQuestion, compact, initialMessages, 
         method: "POST",
         body: formData
       });
-      const data = (await res.json()) as { text?: string; message?: string };
+      const data = (await res.json()) as { text?: string; pdfToken?: string; message?: string };
 
       if (!res.ok) {
         setAttachment({
@@ -197,6 +198,7 @@ export default function ChatWindow({ initialQuestion, compact, initialMessages, 
       setAttachment(null);
       await sendMessage(`I've uploaded ${file.name}. Please read it.`, {
         pdfContext: data.text ?? "",
+        pdfToken: data.pdfToken,
         attachmentName: file.name
       });
     } catch {
@@ -241,7 +243,7 @@ export default function ChatWindow({ initialQuestion, compact, initialMessages, 
 
   async function sendMessage(
     text: string,
-    override?: { pdfContext?: string; attachmentName?: string }
+    override?: { pdfContext?: string; pdfToken?: string; attachmentName?: string }
   ) {
     if (!text.trim() || loading) return;
     if (!override && attachment && attachment.status === "uploading") return;
@@ -249,6 +251,8 @@ export default function ChatWindow({ initialQuestion, compact, initialMessages, 
     const userMessage = text.trim();
     const pdfContext =
       override?.pdfContext ?? (attachment?.status === "ready" ? attachment.text : undefined);
+    const pdfToken =
+      override?.pdfToken ?? (attachment?.status === "ready" ? attachment.pdfToken : undefined);
     const attachmentName = override?.attachmentName ?? attachment?.file.name;
 
     setMessage("");
@@ -273,7 +277,8 @@ export default function ChatWindow({ initialQuestion, compact, initialMessages, 
         body: JSON.stringify({
           message: userMessage,
           history: history.length > 0 ? history : undefined,
-          pdfContext: pdfContext ?? undefined
+          pdfContext: pdfContext ?? undefined,
+          pdfToken: pdfContext != null ? pdfToken : undefined
         })
       });
 

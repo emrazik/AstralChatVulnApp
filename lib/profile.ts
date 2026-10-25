@@ -19,6 +19,10 @@ export type UserProfile = {
   battleWins?: number;
   battleLosses?: number;
   revealedCards?: string[];
+  /** When Celeste last returned a script-capable HTML payload to this user (ISO). */
+  xssCandidateAt?: string;
+  /** Whether that payload was produced while a scanned, signed PDF was in context. */
+  xssCandidateFromDocument?: boolean;
   updatedAt?: string;
 };
 
@@ -131,6 +135,24 @@ export async function getProfileByDisplayName(displayName: string): Promise<User
     })
   );
   return (result.Items?.[0] as UserProfile) ?? null;
+}
+
+export async function recordXssCandidate(userId: string, fromDocument: boolean): Promise<void> {
+  const env = readEnv();
+  await getDocClient().send(
+    new UpdateCommand({
+      TableName: env.profileTableName,
+      Key: { userId },
+      UpdateExpression:
+        "SET xssCandidateAt = :now, xssCandidateFromDocument = :doc, hexId = if_not_exists(hexId, :newHex), revealedCards = if_not_exists(revealedCards, :defaults)",
+      ExpressionAttributeValues: {
+        ":now": new Date().toISOString(),
+        ":doc": fromDocument,
+        ":newHex": generateHexId(),
+        ":defaults": [...DEFAULT_REVEALED_CARD_IDS]
+      }
+    })
+  );
 }
 
 export async function getRevealedCards(userId: string): Promise<string[]> {

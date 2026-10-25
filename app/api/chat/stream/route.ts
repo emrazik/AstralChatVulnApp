@@ -2,11 +2,13 @@ import { NextResponse } from "next/server";
 import { chatWithKnowledgeBaseStream } from "@/lib/bedrock";
 import { getAuthenticatedUserId } from "@/lib/auth";
 import { isRateLimited } from "@/lib/rate-limit";
+import { verifyPdfContext } from "@/lib/pdf-context";
 
 type ChatBody = {
   message?: string;
   sessionId?: string;
   pdfContext?: string;
+  pdfToken?: string;
 };
 
 type StreamEvent = {
@@ -35,6 +37,13 @@ export async function POST(request: Request) {
   const body = (await request.json().catch(() => ({}))) as ChatBody;
   if (!body.message?.trim()) {
     return NextResponse.json({ message: "message is required." }, { status: 400 });
+  }
+
+  if (body.pdfContext && !verifyPdfContext(userId, body.pdfContext, body.pdfToken)) {
+    return NextResponse.json(
+      { message: "Document context must come from an uploaded PDF." },
+      { status: 400 }
+    );
   }
 
   const encoder = new TextEncoder();
